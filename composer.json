@@ -1,0 +1,33 @@
+{
+  "name": "gianfriaur/opcua-php-client-session-manager",
+  "description": "Session manager daemon for persistent OPC UA connections in PHP",
+  "type": "library",
+  "license": "MIT",
+  "require": {
+    "php": "^8.2",
+    "gianfriaur/opcua-php-client": "^1.0",
+    "react/event-loop": "^1.5",
+    "react/socket": "^1.16"
+  },
+  "autoload": {
+    "psr-4": {
+      "Gianfriaur\\OpcuaSessionManager\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Gianfriaur\\OpcuaSessionManager\\Tests\\": "tests/"
+    }
+  },
+  "bin": [
+    "bin/opcua-session-manager"
+  ],
+  "require-dev": {
+    "pestphp/pest": "^3.0"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  }
+}

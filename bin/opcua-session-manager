@@ -1,0 +1,107 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Find autoloader
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+];
+
+$autoloaderFound = false;
+foreach ($autoloadPaths as $autoloadPath) {
+    if (file_exists($autoloadPath)) {
+        require $autoloadPath;
+        $autoloaderFound = true;
+        break;
+    }
+}
+
+if (!$autoloaderFound) {
+    fwrite(STDERR, "Could not find autoloader. Run 'composer install'.\n");
+    exit(1);
+}
+
+use Gianfriaur\OpcuaSessionManager\Daemon\SessionManagerDaemon;
+
+$defaults = require __DIR__ . '/../config/defaults.php';
+
+$socketPath = $defaults['socket_path'];
+$timeout = $defaults['timeout'];
+$cleanupInterval = $defaults['cleanup_interval'];
+$authToken = $defaults['auth_token'];
+$authTokenFile = $defaults['auth_token_file'];
+$maxSessions = $defaults['max_sessions'];
+$socketMode = $defaults['socket_mode'];
+$allowedCertDirs = $defaults['allowed_cert_dirs'];
+$authTokenFromCli = false;
+
+$args = array_slice($argv, 1);
+for ($i = 0; $i < count($args); $i++) {
+    match ($args[$i]) {
+        '--socket' => $socketPath = $args[++$i] ?? $socketPath,
+        '--timeout' => $timeout = (int) ($args[++$i] ?? $timeout),
+        '--cleanup-interval' => $cleanupInterval = (int) ($args[++$i] ?? $cleanupInterval),
+        '--auth-token' => (function () use (&$authToken, &$authTokenFromCli, $args, &$i) {
+            $authToken = $args[++$i] ?? $authToken;
+            $authTokenFromCli = true;
+        })(),
+        '--auth-token-file' => $authTokenFile = $args[++$i] ?? $authTokenFile,
+        '--max-sessions' => $maxSessions = (int) ($args[++$i] ?? $maxSessions),
+        '--socket-mode' => $socketMode = intval($args[++$i] ?? '0600', 8),
+        '--allowed-cert-dirs' => $allowedCertDirs = explode(',', $args[++$i] ?? ''),
+        '--help', '-h' => (function () {
+            echo "Usage: opcua-session-manager [options]\n";
+            echo "\n";
+            echo "Options:\n";
+            echo "  --socket <path>              Unix socket path (default: /tmp/opcua-session-manager.sock)\n";
+            echo "  --timeout <seconds>          Session timeout in seconds (default: 600)\n";
+            echo "  --cleanup-interval <seconds>  Cleanup interval in seconds (default: 30)\n";
+            echo "  --auth-token <token>         Shared secret for IPC authentication (prefer env var or file)\n";
+            echo "  --auth-token-file <path>     Read auth token from file (recommended)\n";
+            echo "  --max-sessions <n>           Maximum concurrent sessions (default: 100)\n";
+            echo "  --socket-mode <octal>        Socket file permissions (default: 0600)\n";
+            echo "  --allowed-cert-dirs <dirs>   Comma-separated list of allowed certificate directories\n";
+            echo "  --help, -h                   Show this help message\n";
+            echo "\n";
+            echo "Environment variables:\n";
+            echo "  OPCUA_AUTH_TOKEN             Auth token (highest priority, avoids /proc exposure)\n";
+            exit(0);
+        })(),
+        default => null,
+    };
+}
+
+// Resolve auth token: env var > file > CLI arg
+$envToken = getenv('OPCUA_AUTH_TOKEN');
+if (is_string($envToken) && $envToken !== '') {
+    $authToken = $envToken;
+} elseif ($authTokenFile !== null) {
+    if (!is_file($authTokenFile) || !is_readable($authTokenFile)) {
+        fwrite(STDERR, "Auth token file not found or not readable: {$authTokenFile}\n");
+        exit(1);
+    }
+    $authToken = trim(file_get_contents($authTokenFile));
+    if ($authToken === '') {
+        fwrite(STDERR, "Auth token file is empty: {$authTokenFile}\n");
+        exit(1);
+    }
+}
+
+// Warn about CLI token visibility in process list
+if ($authTokenFromCli && $authToken !== null) {
+    fwrite(STDERR, "WARNING: --auth-token is visible in the process list (ps/top).\n");
+    fwrite(STDERR, "         Use OPCUA_AUTH_TOKEN env var or --auth-token-file instead.\n");
+}
+
+$daemon = new SessionManagerDaemon(
+    socketPath: $socketPath,
+    timeout: $timeout,
+    cleanupInterval: $cleanupInterval,
+    authToken: $authToken,
+    maxSessions: $maxSessions,
+    socketMode: $socketMode,
+    allowedCertDirs: $allowedCertDirs,
+);
+$daemon->run();
