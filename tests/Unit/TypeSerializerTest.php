@@ -2,13 +2,24 @@
 
 declare(strict_types=1);
 
+use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
+use Gianfriaur\OpcuaPhpClient\Types\BrowseNode;
+use Gianfriaur\OpcuaPhpClient\Types\BrowsePathResult;
+use Gianfriaur\OpcuaPhpClient\Types\BrowsePathTarget;
+use Gianfriaur\OpcuaPhpClient\Types\BrowseResultSet;
 use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
+use Gianfriaur\OpcuaPhpClient\Types\CallResult;
+use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
 use Gianfriaur\OpcuaPhpClient\Types\DataValue;
 use Gianfriaur\OpcuaPhpClient\Types\LocalizedText;
+use Gianfriaur\OpcuaPhpClient\Types\MonitoredItemResult;
 use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
 use Gianfriaur\OpcuaPhpClient\Types\NodeId;
+use Gianfriaur\OpcuaPhpClient\Types\PublishResult;
 use Gianfriaur\OpcuaPhpClient\Types\QualifiedName;
 use Gianfriaur\OpcuaPhpClient\Types\ReferenceDescription;
+use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
+use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
 use Gianfriaur\OpcuaPhpClient\Types\Variant;
 use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
 
@@ -48,18 +59,18 @@ describe('TypeSerializer', function () {
             $data = ['ns' => 2, 'id' => 1234, 'type' => NodeId::TYPE_NUMERIC];
             $nodeId = $this->serializer->deserializeNodeId($data);
 
-            expect($nodeId->getNamespaceIndex())->toBe(2);
-            expect($nodeId->getIdentifier())->toBe(1234);
-            expect($nodeId->getType())->toBe(NodeId::TYPE_NUMERIC);
+            expect($nodeId->namespaceIndex)->toBe(2);
+            expect($nodeId->identifier)->toBe(1234);
+            expect($nodeId->type)->toBe(NodeId::TYPE_NUMERIC);
         });
 
         it('deserializes a string NodeId', function () {
             $data = ['ns' => 1, 'id' => 'MyNode', 'type' => NodeId::TYPE_STRING];
             $nodeId = $this->serializer->deserializeNodeId($data);
 
-            expect($nodeId->getNamespaceIndex())->toBe(1);
-            expect($nodeId->getIdentifier())->toBe('MyNode');
-            expect($nodeId->getType())->toBe(NodeId::TYPE_STRING);
+            expect($nodeId->namespaceIndex)->toBe(1);
+            expect($nodeId->identifier)->toBe('MyNode');
+            expect($nodeId->type)->toBe(NodeId::TYPE_STRING);
         });
 
         it('roundtrips a NodeId', function () {
@@ -67,9 +78,9 @@ describe('TypeSerializer', function () {
             $serialized = $this->serializer->serializeNodeId($original);
             $deserialized = $this->serializer->deserializeNodeId($serialized);
 
-            expect($deserialized->getNamespaceIndex())->toBe($original->getNamespaceIndex());
-            expect($deserialized->getIdentifier())->toBe($original->getIdentifier());
-            expect($deserialized->getType())->toBe($original->getType());
+            expect($deserialized->namespaceIndex)->toBe($original->namespaceIndex);
+            expect($deserialized->identifier)->toBe($original->identifier);
+            expect($deserialized->type)->toBe($original->type);
         });
 
     });
@@ -82,28 +93,39 @@ describe('TypeSerializer', function () {
             $variant = new Variant(BuiltinType::String, 'hello');
             $result = $this->serializer->serializeVariant($variant);
 
-            expect($result)->toBe([
-                'type' => BuiltinType::String->value,
-                'value' => 'hello',
-            ]);
+            expect($result['type'])->toBe(BuiltinType::String->value);
+            expect($result['value'])->toBe('hello');
+            expect($result['dimensions'])->toBeNull();
         });
 
         it('serializes an Int32 Variant', function () {
             $variant = new Variant(BuiltinType::Int32, 42);
             $result = $this->serializer->serializeVariant($variant);
 
-            expect($result)->toBe([
-                'type' => BuiltinType::Int32->value,
-                'value' => 42,
-            ]);
+            expect($result['type'])->toBe(BuiltinType::Int32->value);
+            expect($result['value'])->toBe(42);
+        });
+
+        it('serializes a Variant with dimensions', function () {
+            $variant = new Variant(BuiltinType::Int32, [1, 2, 3, 4], [2, 2]);
+            $result = $this->serializer->serializeVariant($variant);
+
+            expect($result['dimensions'])->toBe([2, 2]);
         });
 
         it('deserializes a Variant', function () {
             $data = ['type' => BuiltinType::Double->value, 'value' => 3.14];
             $variant = $this->serializer->deserializeVariant($data);
 
-            expect($variant->getType())->toBe(BuiltinType::Double);
-            expect($variant->getValue())->toBe(3.14);
+            expect($variant->type)->toBe(BuiltinType::Double);
+            expect($variant->value)->toBe(3.14);
+        });
+
+        it('deserializes a Variant with dimensions', function () {
+            $data = ['type' => BuiltinType::Int32->value, 'value' => [1, 2, 3, 4], 'dimensions' => [2, 2]];
+            $variant = $this->serializer->deserializeVariant($data);
+
+            expect($variant->dimensions)->toBe([2, 2]);
         });
 
         it('roundtrips a Boolean Variant', function () {
@@ -111,8 +133,8 @@ describe('TypeSerializer', function () {
             $serialized = $this->serializer->serializeVariant($original);
             $deserialized = $this->serializer->deserializeVariant($serialized);
 
-            expect($deserialized->getType())->toBe($original->getType());
-            expect($deserialized->getValue())->toBe($original->getValue());
+            expect($deserialized->type)->toBe($original->type);
+            expect($deserialized->value)->toBe($original->value);
         });
 
     });
@@ -162,10 +184,10 @@ describe('TypeSerializer', function () {
             ];
             $dv = $this->serializer->deserializeDataValue($data);
 
-            expect($dv->getStatusCode())->toBe(0);
+            expect($dv->statusCode)->toBe(0);
             expect($dv->getVariant())->not->toBeNull();
-            expect($dv->getVariant()->getType())->toBe(BuiltinType::Int32);
-            expect($dv->getVariant()->getValue())->toBe(42);
+            expect($dv->getVariant()->type)->toBe(BuiltinType::Int32);
+            expect($dv->getVariant()->value)->toBe(42);
         });
 
         it('roundtrips a DataValue', function () {
@@ -173,8 +195,16 @@ describe('TypeSerializer', function () {
             $serialized = $this->serializer->serializeDataValue($original);
             $deserialized = $this->serializer->deserializeDataValue($serialized);
 
-            expect($deserialized->getStatusCode())->toBe($original->getStatusCode());
-            expect($deserialized->getVariant()->getValue())->toBe($original->getVariant()->getValue());
+            expect($deserialized->statusCode)->toBe($original->statusCode);
+            expect($deserialized->getVariant()->value)->toBe($original->getVariant()->value);
+        });
+
+        it('preserves Variant dimensions through DataValue roundtrip', function () {
+            $original = new DataValue(new Variant(BuiltinType::Int32, [1, 2, 3, 4], [2, 2]), 0);
+            $serialized = $this->serializer->serializeDataValue($original);
+            $deserialized = $this->serializer->deserializeDataValue($serialized);
+
+            expect($deserialized->getVariant()->dimensions)->toBe([2, 2]);
         });
 
     });
@@ -194,8 +224,8 @@ describe('TypeSerializer', function () {
             $data = ['ns' => 2, 'name' => 'TestName'];
             $qn = $this->serializer->deserializeQualifiedName($data);
 
-            expect($qn->getNamespaceIndex())->toBe(2);
-            expect($qn->getName())->toBe('TestName');
+            expect($qn->namespaceIndex)->toBe(2);
+            expect($qn->name)->toBe('TestName');
         });
 
     });
@@ -222,8 +252,8 @@ describe('TypeSerializer', function () {
             $data = ['locale' => 'de', 'text' => 'Hallo'];
             $lt = $this->serializer->deserializeLocalizedText($data);
 
-            expect($lt->getLocale())->toBe('de');
-            expect($lt->getText())->toBe('Hallo');
+            expect($lt->locale)->toBe('de');
+            expect($lt->text)->toBe('Hallo');
         });
 
     });
@@ -252,11 +282,11 @@ describe('TypeSerializer', function () {
 
             $deserialized = $this->serializer->deserializeReferenceDescription($serialized);
 
-            expect($deserialized->isForward())->toBeTrue();
-            expect($deserialized->getBrowseName()->getName())->toBe('MyNode');
-            expect($deserialized->getNodeClass())->toBe(NodeClass::Variable);
-            expect($deserialized->getNodeId()->getNamespaceIndex())->toBe(2);
-            expect($deserialized->getNodeId()->getIdentifier())->toBe(100);
+            expect($deserialized->isForward)->toBeTrue();
+            expect($deserialized->browseName->name)->toBe('MyNode');
+            expect($deserialized->nodeClass)->toBe(NodeClass::Variable);
+            expect($deserialized->nodeId->namespaceIndex)->toBe(2);
+            expect($deserialized->nodeId->identifier)->toBe(100);
         });
 
         it('handles null typeDefinition', function () {
@@ -274,7 +304,212 @@ describe('TypeSerializer', function () {
             expect($serialized['typeDefinition'])->toBeNull();
 
             $deserialized = $this->serializer->deserializeReferenceDescription($serialized);
-            expect($deserialized->getTypeDefinition())->toBeNull();
+            expect($deserialized->typeDefinition)->toBeNull();
+        });
+
+    });
+
+    // ── SubscriptionResult ──────────────────────────────────────────
+
+    describe('SubscriptionResult', function () {
+
+        it('serializes and deserializes a SubscriptionResult', function () {
+            $original = new SubscriptionResult(42, 500.0, 2400, 10);
+            $serialized = $this->serializer->serializeSubscriptionResult($original);
+
+            expect($serialized)->toBe([
+                'subscriptionId' => 42,
+                'revisedPublishingInterval' => 500.0,
+                'revisedLifetimeCount' => 2400,
+                'revisedMaxKeepAliveCount' => 10,
+            ]);
+
+            $deserialized = $this->serializer->deserializeSubscriptionResult($serialized);
+            expect($deserialized->subscriptionId)->toBe(42);
+            expect($deserialized->revisedPublishingInterval)->toBe(500.0);
+            expect($deserialized->revisedLifetimeCount)->toBe(2400);
+            expect($deserialized->revisedMaxKeepAliveCount)->toBe(10);
+        });
+
+        it('roundtrips via generic serialize', function () {
+            $original = new SubscriptionResult(1, 250.0, 1200, 5);
+            $serialized = $this->serializer->serialize($original);
+            $deserialized = $this->serializer->deserializeSubscriptionResult($serialized);
+
+            expect($deserialized->subscriptionId)->toBe($original->subscriptionId);
+        });
+
+    });
+
+    // ── MonitoredItemResult ─────────────────────────────────────────
+
+    describe('MonitoredItemResult', function () {
+
+        it('serializes and deserializes a MonitoredItemResult', function () {
+            $original = new MonitoredItemResult(0, 100, 250.0, 1);
+            $serialized = $this->serializer->serializeMonitoredItemResult($original);
+
+            expect($serialized)->toBe([
+                'statusCode' => 0,
+                'monitoredItemId' => 100,
+                'revisedSamplingInterval' => 250.0,
+                'revisedQueueSize' => 1,
+            ]);
+
+            $deserialized = $this->serializer->deserializeMonitoredItemResult($serialized);
+            expect($deserialized->statusCode)->toBe(0);
+            expect($deserialized->monitoredItemId)->toBe(100);
+            expect($deserialized->revisedSamplingInterval)->toBe(250.0);
+            expect($deserialized->revisedQueueSize)->toBe(1);
+        });
+
+    });
+
+    // ── CallResult ──────────────────────────────────────────────────
+
+    describe('CallResult', function () {
+
+        it('serializes and deserializes a CallResult', function () {
+            $original = new CallResult(
+                0,
+                [0, 0],
+                [new Variant(BuiltinType::Int32, 42), new Variant(BuiltinType::String, 'result')],
+            );
+            $serialized = $this->serializer->serializeCallResult($original);
+
+            expect($serialized['statusCode'])->toBe(0);
+            expect($serialized['inputArgumentResults'])->toBe([0, 0]);
+            expect($serialized['outputArguments'])->toHaveCount(2);
+
+            $deserialized = $this->serializer->deserializeCallResult($serialized);
+            expect($deserialized->statusCode)->toBe(0);
+            expect($deserialized->inputArgumentResults)->toBe([0, 0]);
+            expect($deserialized->outputArguments)->toHaveCount(2);
+            expect($deserialized->outputArguments[0]->value)->toBe(42);
+            expect($deserialized->outputArguments[1]->value)->toBe('result');
+        });
+
+    });
+
+    // ── BrowseResultSet ─────────────────────────────────────────────
+
+    describe('BrowseResultSet', function () {
+
+        it('serializes and deserializes a BrowseResultSet', function () {
+            $refs = [
+                new ReferenceDescription(
+                    NodeId::numeric(0, 35),
+                    true,
+                    NodeId::numeric(0, 85),
+                    new QualifiedName(0, 'Objects'),
+                    new LocalizedText(null, 'Objects'),
+                    NodeClass::Object,
+                    null,
+                ),
+            ];
+            $original = new BrowseResultSet($refs, 'abc123');
+            $serialized = $this->serializer->serializeBrowseResultSet($original);
+
+            expect($serialized['continuationPoint'])->toBe('abc123');
+            expect($serialized['references'])->toHaveCount(1);
+
+            $deserialized = $this->serializer->deserializeBrowseResultSet($serialized);
+            expect($deserialized->continuationPoint)->toBe('abc123');
+            expect($deserialized->references)->toHaveCount(1);
+            expect($deserialized->references[0]->nodeId->identifier)->toBe(85);
+        });
+
+        it('handles null continuation point', function () {
+            $original = new BrowseResultSet([], null);
+            $serialized = $this->serializer->serializeBrowseResultSet($original);
+            $deserialized = $this->serializer->deserializeBrowseResultSet($serialized);
+
+            expect($deserialized->continuationPoint)->toBeNull();
+            expect($deserialized->references)->toBeEmpty();
+        });
+
+    });
+
+    // ── PublishResult ───────────────────────────────────────────────
+
+    describe('PublishResult', function () {
+
+        it('serializes and deserializes a PublishResult', function () {
+            $original = new PublishResult(1, 42, false, [], [1, 2, 3]);
+            $serialized = $this->serializer->serializePublishResult($original);
+
+            expect($serialized['subscriptionId'])->toBe(1);
+            expect($serialized['sequenceNumber'])->toBe(42);
+            expect($serialized['moreNotifications'])->toBeFalse();
+            expect($serialized['availableSequenceNumbers'])->toBe([1, 2, 3]);
+
+            $deserialized = $this->serializer->deserializePublishResult($serialized);
+            expect($deserialized->subscriptionId)->toBe(1);
+            expect($deserialized->sequenceNumber)->toBe(42);
+            expect($deserialized->moreNotifications)->toBeFalse();
+            expect($deserialized->availableSequenceNumbers)->toBe([1, 2, 3]);
+        });
+
+    });
+
+    // ── BrowsePathResult ────────────────────────────────────────────
+
+    describe('BrowsePathResult', function () {
+
+        it('serializes and deserializes a BrowsePathResult', function () {
+            $original = new BrowsePathResult(0, [
+                new BrowsePathTarget(NodeId::numeric(2, 100), 0),
+                new BrowsePathTarget(NodeId::numeric(2, 200), 1),
+            ]);
+            $serialized = $this->serializer->serializeBrowsePathResult($original);
+
+            expect($serialized['statusCode'])->toBe(0);
+            expect($serialized['targets'])->toHaveCount(2);
+            expect($serialized['targets'][0]['targetId']['id'])->toBe(100);
+
+            $deserialized = $this->serializer->deserializeBrowsePathResult($serialized);
+            expect($deserialized->statusCode)->toBe(0);
+            expect($deserialized->targets)->toHaveCount(2);
+            expect($deserialized->targets[0]->targetId->identifier)->toBe(100);
+            expect($deserialized->targets[1]->remainingPathIndex)->toBe(1);
+        });
+
+    });
+
+    // ── TransferResult ──────────────────────────────────────────────
+
+    describe('TransferResult', function () {
+
+        it('serializes and deserializes a TransferResult', function () {
+            $original = new TransferResult(0, [1, 2, 3]);
+            $serialized = $this->serializer->serializeTransferResult($original);
+
+            expect($serialized)->toBe([
+                'statusCode' => 0,
+                'availableSequenceNumbers' => [1, 2, 3],
+            ]);
+
+            $deserialized = $this->serializer->deserializeTransferResult($serialized);
+            expect($deserialized->statusCode)->toBe(0);
+            expect($deserialized->availableSequenceNumbers)->toBe([1, 2, 3]);
+        });
+
+    });
+
+    // ── ConnectionState ─────────────────────────────────────────────
+
+    describe('ConnectionState', function () {
+
+        it('serializes ConnectionState as name', function () {
+            expect($this->serializer->serialize(ConnectionState::Connected))->toBe('Connected');
+            expect($this->serializer->serialize(ConnectionState::Disconnected))->toBe('Disconnected');
+            expect($this->serializer->serialize(ConnectionState::Broken))->toBe('Broken');
+        });
+
+        it('deserializes ConnectionState from name', function () {
+            expect($this->serializer->deserializeConnectionState('Connected'))->toBe(ConnectionState::Connected);
+            expect($this->serializer->deserializeConnectionState('Broken'))->toBe(ConnectionState::Broken);
+            expect($this->serializer->deserializeConnectionState('unknown'))->toBe(ConnectionState::Disconnected);
         });
 
     });
@@ -291,6 +526,18 @@ describe('TypeSerializer', function () {
         it('deserializes BuiltinType from int', function () {
             $result = $this->serializer->deserializeBuiltinType(12);
             expect($result)->toBe(BuiltinType::String);
+        });
+
+    });
+
+    // ── BrowseDirection ─────────────────────────────────────────────
+
+    describe('BrowseDirection', function () {
+
+        it('serializes BrowseDirection as int', function () {
+            expect($this->serializer->serialize(BrowseDirection::Forward))->toBe(BrowseDirection::Forward->value);
+            expect($this->serializer->serialize(BrowseDirection::Inverse))->toBe(BrowseDirection::Inverse->value);
+            expect($this->serializer->serialize(BrowseDirection::Both))->toBe(BrowseDirection::Both->value);
         });
 
     });

@@ -5,20 +5,44 @@ declare(strict_types=1);
 namespace Gianfriaur\OpcuaSessionManager\Client;
 
 use DateTimeImmutable;
+use Gianfriaur\OpcuaPhpClient\Builder\BrowsePathsBuilder;
+use Gianfriaur\OpcuaPhpClient\Builder\MonitoredItemsBuilder;
+use Gianfriaur\OpcuaPhpClient\Builder\ReadMultiBuilder;
+use Gianfriaur\OpcuaPhpClient\Builder\WriteMultiBuilder;
 use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
 use Gianfriaur\OpcuaPhpClient\Exception\ServiceException;
 use Gianfriaur\OpcuaPhpClient\OpcUaClientInterface;
+use Gianfriaur\OpcuaPhpClient\Repository\ExtensionObjectRepository;
 use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
 use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
 use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
+use Gianfriaur\OpcuaPhpClient\Types\BrowseNode;
+use Gianfriaur\OpcuaPhpClient\Types\BrowsePathResult;
+use Gianfriaur\OpcuaPhpClient\Types\BrowseResultSet;
 use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
+use Gianfriaur\OpcuaPhpClient\Types\CallResult;
 use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
 use Gianfriaur\OpcuaPhpClient\Types\DataValue;
+use Gianfriaur\OpcuaPhpClient\Types\EndpointDescription;
+use Gianfriaur\OpcuaPhpClient\Types\MonitoredItemResult;
+use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
 use Gianfriaur\OpcuaPhpClient\Types\NodeId;
+use Gianfriaur\OpcuaPhpClient\Types\PublishResult;
+use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
+use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
 use Gianfriaur\OpcuaPhpClient\Types\Variant;
 use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
 use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use Psr\SimpleCache\CacheInterface;
 
+/**
+ * Drop-in replacement for the OPC UA Client that proxies all operations to a long-running daemon over a Unix socket.
+ *
+ * @see OpcUaClientInterface
+ * @see SessionManagerDaemon
+ */
 class ManagedClient implements OpcUaClientInterface
 {
     private ?string $sessionId = null;
@@ -30,6 +54,15 @@ class ManagedClient implements OpcUaClientInterface
     private ?int $batchSize = null;
     private int $defaultBrowseMaxDepth = 10;
 
+    private LoggerInterface $logger;
+    private ?CacheInterface $cache = null;
+    private ExtensionObjectRepository $extensionObjectRepository;
+
+    /**
+     * @param string $socketPath Path to the daemon's Unix socket.
+     * @param float $timeout IPC timeout in seconds.
+     * @param ?string $authToken Shared secret for IPC authentication.
+     */
     public function __construct(
         private readonly string  $socketPath = '/tmp/opcua-session-manager.sock',
         private readonly float   $timeout = 30.0,
@@ -37,8 +70,86 @@ class ManagedClient implements OpcUaClientInterface
     )
     {
         $this->serializer = new TypeSerializer();
+        $this->logger = new NullLogger();
+        $this->extensionObjectRepository = new ExtensionObjectRepository();
     }
 
+    /**
+     * @param LoggerInterface $logger
+     * @return self
+     */
+    public function setLogger(LoggerInterface $logger): self
+    {
+        $this->logger = $logger;
+
+        return $this;
+    }
+
+    /**
+     * @return LoggerInterface
+     */
+    public function getLogger(): LoggerInterface
+    {
+        return $this->logger;
+    }
+
+    /**
+     * @return ExtensionObjectRepository
+     */
+    public function getExtensionObjectRepository(): ExtensionObjectRepository
+    {
+        return $this->extensionObjectRepository;
+    }
+
+    /**
+     * @param ?CacheInterface $cache
+     * @return self
+     */
+    public function setCache(?CacheInterface $cache): self
+    {
+        $this->cache = $cache;
+
+        return $this;
+    }
+
+    /**
+     * @return ?CacheInterface
+     */
+    public function getCache(): ?CacheInterface
+    {
+        return $this->cache;
+    }
+
+    /**
+     * @param NodeId|string $nodeId
+     * @return void
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
+    public function invalidateCache(NodeId|string $nodeId): void
+    {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+        $this->query('invalidateCache', [
+            $this->serializer->serializeNodeId($nodeId),
+        ]);
+    }
+
+    /**
+     * @return void
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
+    public function flushCache(): void
+    {
+        $this->query('flushCache', []);
+    }
+
+    /**
+     * @param float $timeout Timeout in seconds.
+     * @return self
+     */
     public function setTimeout(float $timeout): self
     {
         $this->opcuaTimeout = $timeout;
@@ -47,11 +158,18 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @return float
+     */
     public function getTimeout(): float
     {
         return $this->opcuaTimeout;
     }
 
+    /**
+     * @param int $maxRetries
+     * @return self
+     */
     public function setAutoRetry(int $maxRetries): self
     {
         $this->autoRetry = $maxRetries;
@@ -60,11 +178,18 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @return int
+     */
     public function getAutoRetry(): int
     {
         return $this->autoRetry ?? ($this->sessionId !== null ? 1 : 0);
     }
 
+    /**
+     * @param int $batchSize
+     * @return self
+     */
     public function setBatchSize(int $batchSize): self
     {
         $this->batchSize = $batchSize;
@@ -73,21 +198,40 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @return ?int
+     */
     public function getBatchSize(): ?int
     {
         return $this->batchSize;
     }
 
+    /**
+     * @return ?int
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
     public function getServerMaxNodesPerRead(): ?int
     {
         return $this->query('getServerMaxNodesPerRead', []);
     }
 
+    /**
+     * @return ?int
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
     public function getServerMaxNodesPerWrite(): ?int
     {
         return $this->query('getServerMaxNodesPerWrite', []);
     }
 
+    /**
+     * @param int $maxDepth
+     * @return self
+     */
     public function setDefaultBrowseMaxDepth(int $maxDepth): self
     {
         $this->defaultBrowseMaxDepth = $maxDepth;
@@ -96,11 +240,18 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @return int
+     */
     public function getDefaultBrowseMaxDepth(): int
     {
         return $this->defaultBrowseMaxDepth;
     }
 
+    /**
+     * @param SecurityPolicy $policy
+     * @return self
+     */
     public function setSecurityPolicy(SecurityPolicy $policy): self
     {
         $this->config['securityPolicy'] = $policy->value;
@@ -108,6 +259,10 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @param SecurityMode $mode
+     * @return self
+     */
     public function setSecurityMode(SecurityMode $mode): self
     {
         $this->config['securityMode'] = $mode->value;
@@ -115,6 +270,11 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @param string $username
+     * @param string $password
+     * @return self
+     */
     public function setUserCredentials(string $username, string $password): self
     {
         $this->config['username'] = $username;
@@ -123,6 +283,12 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @param string $certPath
+     * @param string $keyPath
+     * @param ?string $caCertPath
+     * @return self
+     */
     public function setClientCertificate(string $certPath, string $keyPath, ?string $caCertPath = null): self
     {
         $this->config['clientCertPath'] = $certPath;
@@ -134,6 +300,11 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @param string $certPath
+     * @param string $keyPath
+     * @return self
+     */
     public function setUserCertificate(string $certPath, string $keyPath): self
     {
         $this->config['userCertPath'] = $certPath;
@@ -142,6 +313,14 @@ class ManagedClient implements OpcUaClientInterface
         return $this;
     }
 
+    /**
+     * @param string $endpointUrl
+     * @return void
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function connect(string $endpointUrl): void
     {
         $response = $this->sendCommand([
@@ -153,6 +332,12 @@ class ManagedClient implements OpcUaClientInterface
         $this->sessionId = $response['sessionId'];
     }
 
+    /**
+     * @return void
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
     public function reconnect(): void
     {
         if ($this->sessionId === null) {
@@ -162,6 +347,9 @@ class ManagedClient implements OpcUaClientInterface
         $this->query('reconnect', []);
     }
 
+    /**
+     * @return void
+     */
     public function disconnect(): void
     {
         if ($this->sessionId === null) {
@@ -178,6 +366,9 @@ class ManagedClient implements OpcUaClientInterface
         }
     }
 
+    /**
+     * @return bool
+     */
     public function isConnected(): bool
     {
         if ($this->sessionId === null) {
@@ -187,6 +378,9 @@ class ManagedClient implements OpcUaClientInterface
         return (bool)$this->query('isConnected', []);
     }
 
+    /**
+     * @return ConnectionState
+     */
     public function getConnectionState(): ConnectionState
     {
         if ($this->sessionId === null) {
@@ -198,27 +392,68 @@ class ManagedClient implements OpcUaClientInterface
         return $this->serializer->deserializeConnectionState($state);
     }
 
-    public function getEndpoints(string $endpointUrl): array
+    /**
+     * @param ?int $namespaceIndex
+     * @param bool $useCache
+     * @return int
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
+    public function discoverDataTypes(?int $namespaceIndex = null, bool $useCache = true): int
     {
-        $result = $this->query('getEndpoints', [$endpointUrl]);
-
-        return $result;
+        return $this->query('discoverDataTypes', [$namespaceIndex, $useCache]);
     }
 
+    /**
+     * @param string $endpointUrl
+     * @param bool $useCache
+     * @return EndpointDescription[]
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
+    public function getEndpoints(string $endpointUrl, bool $useCache = true): array
+    {
+        $result = $this->query('getEndpoints', [$endpointUrl, $useCache]);
+
+        return array_map(
+            fn(array $ep) => $this->serializer->deserializeEndpointDescription($ep),
+            $result,
+        );
+    }
+
+    /**
+     * @param NodeId|string $nodeId
+     * @param BrowseDirection $direction
+     * @param ?NodeId $referenceTypeId
+     * @param bool $includeSubtypes
+     * @param NodeClass[] $nodeClasses
+     * @param bool $useCache
+     * @return ReferenceDescription[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function browse(
-        NodeId          $nodeId,
+        NodeId|string   $nodeId,
         BrowseDirection $direction = BrowseDirection::Forward,
         ?NodeId         $referenceTypeId = null,
         bool            $includeSubtypes = true,
-        int             $nodeClassMask = 0,
+        array           $nodeClasses = [],
+        bool            $useCache = true,
     ): array
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('browse', [
             $this->serializer->serializeNodeId($nodeId),
             $direction->value,
             $referenceTypeId !== null ? $this->serializer->serializeNodeId($referenceTypeId) : null,
             $includeSubtypes,
-            $nodeClassMask,
+            $this->serializeNodeClasses($nodeClasses),
+            $useCache,
         ]);
 
         return array_map(
@@ -227,58 +462,85 @@ class ManagedClient implements OpcUaClientInterface
         );
     }
 
+    /**
+     * @param NodeId|string $nodeId
+     * @param BrowseDirection $direction
+     * @param ?NodeId $referenceTypeId
+     * @param bool $includeSubtypes
+     * @param NodeClass[] $nodeClasses
+     * @return BrowseResultSet
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function browseWithContinuation(
-        NodeId          $nodeId,
+        NodeId|string   $nodeId,
         BrowseDirection $direction = BrowseDirection::Forward,
         ?NodeId         $referenceTypeId = null,
         bool            $includeSubtypes = true,
-        int             $nodeClassMask = 0,
-    ): array
+        array           $nodeClasses = [],
+    ): BrowseResultSet
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('browseWithContinuation', [
             $this->serializer->serializeNodeId($nodeId),
             $direction->value,
             $referenceTypeId !== null ? $this->serializer->serializeNodeId($referenceTypeId) : null,
             $includeSubtypes,
-            $nodeClassMask,
+            $this->serializeNodeClasses($nodeClasses),
         ]);
 
-        return [
-            'references' => array_map(
-                fn(array $ref) => $this->serializer->deserializeReferenceDescription($ref),
-                $result['references'] ?? [],
-            ),
-            'continuationPoint' => $result['continuationPoint'] ?? null,
-        ];
+        return $this->serializer->deserializeBrowseResultSet($result);
     }
 
-    public function browseNext(string $continuationPoint): array
+    /**
+     * @param string $continuationPoint
+     * @return BrowseResultSet
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function browseNext(string $continuationPoint): BrowseResultSet
     {
         $result = $this->query('browseNext', [$continuationPoint]);
 
-        return [
-            'references' => array_map(
-                fn(array $ref) => $this->serializer->deserializeReferenceDescription($ref),
-                $result['references'] ?? [],
-            ),
-            'continuationPoint' => $result['continuationPoint'] ?? null,
-        ];
+        return $this->serializer->deserializeBrowseResultSet($result);
     }
 
+    /**
+     * @param NodeId|string $nodeId
+     * @param BrowseDirection $direction
+     * @param ?NodeId $referenceTypeId
+     * @param bool $includeSubtypes
+     * @param NodeClass[] $nodeClasses
+     * @param bool $useCache
+     * @return ReferenceDescription[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function browseAll(
-        NodeId          $nodeId,
+        NodeId|string   $nodeId,
         BrowseDirection $direction = BrowseDirection::Forward,
         ?NodeId         $referenceTypeId = null,
         bool            $includeSubtypes = true,
-        int             $nodeClassMask = 0,
+        array           $nodeClasses = [],
+        bool            $useCache = true,
     ): array
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('browseAll', [
             $this->serializer->serializeNodeId($nodeId),
             $direction->value,
             $referenceTypeId !== null ? $this->serializer->serializeNodeId($referenceTypeId) : null,
             $includeSubtypes,
-            $nodeClassMask,
+            $this->serializeNodeClasses($nodeClasses),
+            $useCache,
         ]);
 
         return array_map(
@@ -287,22 +549,37 @@ class ManagedClient implements OpcUaClientInterface
         );
     }
 
+    /**
+     * @param NodeId|string $nodeId
+     * @param BrowseDirection $direction
+     * @param ?int $maxDepth
+     * @param ?NodeId $referenceTypeId
+     * @param bool $includeSubtypes
+     * @param NodeClass[] $nodeClasses
+     * @return BrowseNode[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function browseRecursive(
-        NodeId          $nodeId,
+        NodeId|string   $nodeId,
         BrowseDirection $direction = BrowseDirection::Forward,
         ?int            $maxDepth = null,
         ?NodeId         $referenceTypeId = null,
         bool            $includeSubtypes = true,
-        int             $nodeClassMask = 0,
+        array           $nodeClasses = [],
     ): array
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('browseRecursive', [
             $this->serializer->serializeNodeId($nodeId),
             $direction->value,
             $maxDepth,
             $referenceTypeId !== null ? $this->serializer->serializeNodeId($referenceTypeId) : null,
             $includeSubtypes,
-            $nodeClassMask,
+            $this->serializeNodeClasses($nodeClasses),
         ]);
 
         return array_map(
@@ -311,10 +588,24 @@ class ManagedClient implements OpcUaClientInterface
         );
     }
 
-    public function translateBrowsePaths(array $browsePaths): array
+    /**
+     * @param ?array $browsePaths
+     * @return BrowsePathResult[]|BrowsePathsBuilder
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function translateBrowsePaths(?array $browsePaths = null): array|BrowsePathsBuilder
     {
+        if ($browsePaths === null) {
+            return new BrowsePathsBuilder($this);
+        }
+
         $serializedPaths = array_map(fn(array $bp) => [
-            'startingNodeId' => $this->serializer->serializeNodeId($bp['startingNodeId']),
+            'startingNodeId' => $this->serializer->serializeNodeId(
+                $this->resolveNodeIdParam($bp['startingNodeId']),
+            ),
             'relativePath' => array_map(fn(array $elem) => [
                 'referenceTypeId' => isset($elem['referenceTypeId'])
                     ? $this->serializer->serializeNodeId($elem['referenceTypeId'])
@@ -327,27 +618,52 @@ class ManagedClient implements OpcUaClientInterface
 
         $result = $this->query('translateBrowsePaths', [$serializedPaths]);
 
-        return array_map(fn(array $pathResult) => [
-            'statusCode' => $pathResult['statusCode'],
-            'targets' => array_map(fn(array $target) => [
-                'targetId' => $this->serializer->deserializeNodeId($target['targetId']),
-                'remainingPathIndex' => $target['remainingPathIndex'],
-            ], $pathResult['targets'] ?? []),
-        ], $result);
+        return array_map(
+            fn(array $pathResult) => $this->serializer->deserializeBrowsePathResult($pathResult),
+            $result,
+        );
     }
 
-    public function resolveNodeId(string $path, ?NodeId $startingNodeId = null): NodeId
+    /**
+     * @param string $path
+     * @param NodeId|string|null $startingNodeId
+     * @param bool $useCache
+     * @return NodeId
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function resolveNodeId(string $path, NodeId|string|null $startingNodeId = null, bool $useCache = true): NodeId
     {
+        $serializedStartingNodeId = null;
+        if ($startingNodeId !== null) {
+            $startingNodeId = $this->resolveNodeIdParam($startingNodeId);
+            $serializedStartingNodeId = $this->serializer->serializeNodeId($startingNodeId);
+        }
+
         $result = $this->query('resolveNodeId', [
             $path,
-            $startingNodeId !== null ? $this->serializer->serializeNodeId($startingNodeId) : null,
+            $serializedStartingNodeId,
+            $useCache,
         ]);
 
         return $this->serializer->deserializeNodeId($result);
     }
 
-    public function read(NodeId $nodeId, int $attributeId = 13): DataValue
+    /**
+     * @param NodeId|string $nodeId
+     * @param int $attributeId
+     * @return DataValue
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function read(NodeId|string $nodeId, int $attributeId = 13): DataValue
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('read', [
             $this->serializer->serializeNodeId($nodeId),
             $attributeId,
@@ -356,12 +672,26 @@ class ManagedClient implements OpcUaClientInterface
         return $this->serializer->deserializeDataValue($result);
     }
 
-    public function readMulti(array $items): array
+    /**
+     * @param ?array $readItems
+     * @return DataValue[]|ReadMultiBuilder
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function readMulti(?array $readItems = null): array|ReadMultiBuilder
     {
+        if ($readItems === null) {
+            return new ReadMultiBuilder($this);
+        }
+
         $serializedItems = array_map(fn(array $item) => [
-            'nodeId' => $this->serializer->serializeNodeId($item['nodeId']),
+            'nodeId' => $this->serializer->serializeNodeId(
+                $this->resolveNodeIdParam($item['nodeId']),
+            ),
             'attributeId' => $item['attributeId'] ?? 13,
-        ], $items);
+        ], $readItems);
 
         $result = $this->query('readMulti', [$serializedItems]);
 
@@ -371,8 +701,20 @@ class ManagedClient implements OpcUaClientInterface
         );
     }
 
-    public function write(NodeId $nodeId, mixed $value, BuiltinType $type): int
+    /**
+     * @param NodeId|string $nodeId
+     * @param mixed $value
+     * @param BuiltinType $type
+     * @return int
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function write(NodeId|string $nodeId, mixed $value, BuiltinType $type): int
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         return $this->query('write', [
             $this->serializer->serializeNodeId($nodeId),
             $value,
@@ -380,32 +722,74 @@ class ManagedClient implements OpcUaClientInterface
         ]);
     }
 
-    public function writeMulti(array $items): array
+    /**
+     * @param ?array $writeItems
+     * @return int[]|WriteMultiBuilder
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function writeMulti(?array $writeItems = null): array|WriteMultiBuilder
     {
+        if ($writeItems === null) {
+            return new WriteMultiBuilder($this);
+        }
+
         $serializedItems = array_map(fn(array $item) => [
-            'nodeId' => $this->serializer->serializeNodeId($item['nodeId']),
+            'nodeId' => $this->serializer->serializeNodeId(
+                $this->resolveNodeIdParam($item['nodeId']),
+            ),
             'value' => $item['value'],
             'type' => $item['type']->value,
             'attributeId' => $item['attributeId'] ?? 13,
-        ], $items);
+        ], $writeItems);
 
         return $this->query('writeMulti', [$serializedItems]);
     }
 
-    public function call(NodeId $objectId, NodeId $methodId, array $inputArguments = []): array
+    /**
+     * @param NodeId|string $objectId
+     * @param NodeId|string $methodId
+     * @param Variant[] $inputArguments
+     * @return CallResult
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function call(NodeId|string $objectId, NodeId|string $methodId, array $inputArguments = []): CallResult
     {
+        $objectId = $this->resolveNodeIdParam($objectId);
+        $methodId = $this->resolveNodeIdParam($methodId);
+
         $serializedArgs = array_map(
             fn(Variant $v) => $this->serializer->serializeVariant($v),
             $inputArguments,
         );
 
-        return $this->query('call', [
+        $result = $this->query('call', [
             $this->serializer->serializeNodeId($objectId),
             $this->serializer->serializeNodeId($methodId),
             $serializedArgs,
         ]);
+
+        return $this->serializer->deserializeCallResult($result);
     }
 
+    /**
+     * @param float $publishingInterval
+     * @param int $lifetimeCount
+     * @param int $maxKeepAliveCount
+     * @param int $maxNotificationsPerPublish
+     * @param bool $publishingEnabled
+     * @param int $priority
+     * @return SubscriptionResult
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function createSubscription(
         float $publishingInterval = 500.0,
         int   $lifetimeCount = 2400,
@@ -413,9 +797,9 @@ class ManagedClient implements OpcUaClientInterface
         int   $maxNotificationsPerPublish = 0,
         bool  $publishingEnabled = true,
         int   $priority = 0,
-    ): array
+    ): SubscriptionResult
     {
-        return $this->query('createSubscription', [
+        $result = $this->query('createSubscription', [
             $publishingInterval,
             $lifetimeCount,
             $maxKeepAliveCount,
@@ -423,60 +807,180 @@ class ManagedClient implements OpcUaClientInterface
             $publishingEnabled,
             $priority,
         ]);
+
+        return $this->serializer->deserializeSubscriptionResult($result);
     }
 
-    public function createMonitoredItems(int $subscriptionId, array $items): array
+    /**
+     * @param int $subscriptionId
+     * @param ?array $monitoredItems
+     * @return MonitoredItemResult[]|MonitoredItemsBuilder
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function createMonitoredItems(
+        int    $subscriptionId,
+        ?array $monitoredItems = null,
+    ): array|MonitoredItemsBuilder
     {
+        if ($monitoredItems === null) {
+            return new MonitoredItemsBuilder($this, $subscriptionId);
+        }
+
         $serializedItems = array_map(fn(array $item) => [
-            'nodeId' => $this->serializer->serializeNodeId($item['nodeId']),
+            'nodeId' => $this->serializer->serializeNodeId(
+                $this->resolveNodeIdParam($item['nodeId']),
+            ),
             'attributeId' => $item['attributeId'] ?? 13,
             'samplingInterval' => $item['samplingInterval'] ?? 250.0,
             'queueSize' => $item['queueSize'] ?? 1,
             'clientHandle' => $item['clientHandle'] ?? 0,
             'monitoringMode' => $item['monitoringMode'] ?? 0,
-        ], $items);
+        ], $monitoredItems);
 
-        return $this->query('createMonitoredItems', [$subscriptionId, $serializedItems]);
+        $result = $this->query('createMonitoredItems', [$subscriptionId, $serializedItems]);
+
+        return array_map(
+            fn(array $item) => $this->serializer->deserializeMonitoredItemResult($item),
+            $result,
+        );
     }
 
+    /**
+     * @param int $subscriptionId
+     * @param NodeId|string $nodeId
+     * @param string[] $selectFields
+     * @param int $clientHandle
+     * @return MonitoredItemResult
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function createEventMonitoredItem(
-        int    $subscriptionId,
-        NodeId $nodeId,
-        array  $selectFields = ['EventId', 'EventType', 'SourceName', 'Time', 'Message', 'Severity'],
-        int    $clientHandle = 1,
-    ): array
+        int           $subscriptionId,
+        NodeId|string $nodeId,
+        array         $selectFields = ['EventId', 'EventType', 'SourceName', 'Time', 'Message', 'Severity'],
+        int           $clientHandle = 1,
+    ): MonitoredItemResult
     {
-        return $this->query('createEventMonitoredItem', [
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
+        $result = $this->query('createEventMonitoredItem', [
             $subscriptionId,
             $this->serializer->serializeNodeId($nodeId),
             $selectFields,
             $clientHandle,
         ]);
+
+        return $this->serializer->deserializeMonitoredItemResult($result);
     }
 
+    /**
+     * @param int $subscriptionId
+     * @param int[] $monitoredItemIds
+     * @return int[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function deleteMonitoredItems(int $subscriptionId, array $monitoredItemIds): array
     {
         return $this->query('deleteMonitoredItems', [$subscriptionId, $monitoredItemIds]);
     }
 
+    /**
+     * @param int $subscriptionId
+     * @return int
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function deleteSubscription(int $subscriptionId): int
     {
         return $this->query('deleteSubscription', [$subscriptionId]);
     }
 
-    public function publish(array $acknowledgements = []): array
+    /**
+     * @param array $acknowledgements
+     * @return PublishResult
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function publish(array $acknowledgements = []): PublishResult
     {
-        return $this->query('publish', [$acknowledgements]);
+        $result = $this->query('publish', [$acknowledgements]);
+
+        return $this->serializer->deserializePublishResult($result);
     }
 
+    /**
+     * @param int[] $subscriptionIds
+     * @param bool $sendInitialValues
+     * @return TransferResult[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function transferSubscriptions(array $subscriptionIds, bool $sendInitialValues = false): array
+    {
+        $result = $this->query('transferSubscriptions', [$subscriptionIds, $sendInitialValues]);
+
+        return array_map(
+            fn(array $item) => $this->serializer->deserializeTransferResult($item),
+            $result,
+        );
+    }
+
+    /**
+     * @param int $subscriptionId
+     * @param int $retransmitSequenceNumber
+     * @return array{sequenceNumber: int, publishTime: ?DateTimeImmutable, notifications: array}
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function republish(int $subscriptionId, int $retransmitSequenceNumber): array
+    {
+        $result = $this->query('republish', [$subscriptionId, $retransmitSequenceNumber]);
+
+        if (isset($result['publishTime']) && is_string($result['publishTime'])) {
+            $result['publishTime'] = new DateTimeImmutable($result['publishTime']);
+        }
+
+        return $result;
+    }
+
+    /**
+     * @param NodeId|string $nodeId
+     * @param ?DateTimeImmutable $startTime
+     * @param ?DateTimeImmutable $endTime
+     * @param int $numValuesPerNode
+     * @param bool $returnBounds
+     * @return DataValue[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function historyReadRaw(
-        NodeId             $nodeId,
+        NodeId|string      $nodeId,
         ?DateTimeImmutable $startTime = null,
         ?DateTimeImmutable $endTime = null,
         int                $numValuesPerNode = 0,
         bool               $returnBounds = false,
     ): array
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('historyReadRaw', [
             $this->serializer->serializeNodeId($nodeId),
             $startTime?->format('c'),
@@ -491,14 +995,28 @@ class ManagedClient implements OpcUaClientInterface
         );
     }
 
+    /**
+     * @param NodeId|string $nodeId
+     * @param DateTimeImmutable $startTime
+     * @param DateTimeImmutable $endTime
+     * @param float $processingInterval
+     * @param NodeId $aggregateType
+     * @return DataValue[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function historyReadProcessed(
-        NodeId             $nodeId,
+        NodeId|string     $nodeId,
         DateTimeImmutable $startTime,
         DateTimeImmutable $endTime,
-        float              $processingInterval,
-        NodeId             $aggregateType,
+        float             $processingInterval,
+        NodeId            $aggregateType,
     ): array
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('historyReadProcessed', [
             $this->serializer->serializeNodeId($nodeId),
             $startTime->format('c'),
@@ -513,11 +1031,22 @@ class ManagedClient implements OpcUaClientInterface
         );
     }
 
+    /**
+     * @param NodeId|string $nodeId
+     * @param DateTimeImmutable[] $timestamps
+     * @return DataValue[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     public function historyReadAtTime(
-        NodeId $nodeId,
-        array  $timestamps,
+        NodeId|string $nodeId,
+        array         $timestamps,
     ): array
     {
+        $nodeId = $this->resolveNodeIdParam($nodeId);
+
         $result = $this->query('historyReadAtTime', [
             $this->serializer->serializeNodeId($nodeId),
             array_map(fn(DateTimeImmutable $ts) => $ts->format('c'), $timestamps),
@@ -529,11 +1058,40 @@ class ManagedClient implements OpcUaClientInterface
         );
     }
 
+    /**
+     * @return ?string
+     */
     public function getSessionId(): ?string
     {
         return $this->sessionId;
     }
 
+    /**
+     * @param NodeId|string $nodeId
+     * @return NodeId
+     */
+    private function resolveNodeIdParam(NodeId|string $nodeId): NodeId
+    {
+        return is_string($nodeId) ? NodeId::parse($nodeId) : $nodeId;
+    }
+
+    /**
+     * @param NodeClass[] $nodeClasses
+     * @return int[]
+     */
+    private function serializeNodeClasses(array $nodeClasses): array
+    {
+        return array_map(fn(NodeClass $nc) => $nc->value, $nodeClasses);
+    }
+
+    /**
+     * @param string $method
+     * @param array $params
+     * @return mixed
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
     private function query(string $method, array $params): mixed
     {
         if ($this->sessionId === null) {
@@ -548,6 +1106,14 @@ class ManagedClient implements OpcUaClientInterface
         ]);
     }
 
+    /**
+     * @param array $command
+     * @return mixed
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
     private function sendCommand(array $command): mixed
     {
         if ($this->authToken !== null) {

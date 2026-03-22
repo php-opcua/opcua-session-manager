@@ -11,4 +11,9 @@ return [
     'max_sessions' => 100,
     'socket_mode' => 0600,
     'allowed_cert_dirs' => null,
+    'log_file' => null,
+    'log_level' => 'info',
+    'cache_driver' => 'memory',
+    'cache_path' => null,
+    'cache_ttl' => 300,
 ];

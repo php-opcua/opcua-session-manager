@@ -6,16 +6,29 @@ namespace Gianfriaur\OpcuaSessionManager\Daemon;
 
 use Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException;
 
+/**
+ * In-memory registry for active OPC UA sessions with expiration support.
+ */
 class SessionStore
 {
     /** @var array<string, Session> */
     private array $sessions = [];
 
+    /**
+     * @param Session $session
+     * @return void
+     */
     public function create(Session $session): void
     {
         $this->sessions[$session->id] = $session;
     }
 
+    /**
+     * @param string $id
+     * @return Session
+     *
+     * @throws SessionNotFoundException If no session exists with the given ID.
+     */
     public function get(string $id): Session
     {
         if (!isset($this->sessions[$id])) {
@@ -25,17 +38,28 @@ class SessionStore
         return $this->sessions[$id];
     }
 
+    /**
+     * @param string $id
+     * @return void
+     */
     public function remove(string $id): void
     {
         unset($this->sessions[$id]);
     }
 
+    /**
+     * @param string $id
+     * @return void
+     *
+     * @throws SessionNotFoundException If no session exists with the given ID.
+     */
     public function touch(string $id): void
     {
         $this->get($id)->touch();
     }
 
     /**
+     * @param int $timeout
      * @return Session[]
      */
     public function getExpired(int $timeout): array
@@ -50,6 +74,9 @@ class SessionStore
         return $expired;
     }
 
+    /**
+     * @return int
+     */
     public function count(): int
     {
         return count($this->sessions);

@@ -194,11 +194,11 @@ final class TestHelper
             $found = false;
 
             foreach ($refs as $ref) {
-                $browseName = $ref->getBrowseName()->getName();
-                $displayName = (string)$ref->getDisplayName();
+                $browseName = $ref->browseName->name;
+                $displayName = (string)$ref->displayName;
 
                 if ($browseName === $name || $displayName === $name) {
-                    $currentNodeId = $ref->getNodeId();
+                    $currentNodeId = $ref->nodeId;
                     $found = true;
                     break;
                 }
@@ -206,7 +206,7 @@ final class TestHelper
 
             if (!$found) {
                 $availableNames = array_map(
-                    fn(ReferenceDescription $r) => $r->getBrowseName()->getName(),
+                    fn(ReferenceDescription $r) => $r->browseName->name,
                     $refs,
                 );
                 throw new RuntimeException(
@@ -222,7 +222,7 @@ final class TestHelper
     public static function findRefByName(array $refs, string $name): ?ReferenceDescription
     {
         foreach ($refs as $ref) {
-            if ($ref->getBrowseName()->getName() === $name || (string)$ref->getDisplayName() === $name) {
+            if ($ref->browseName->name === $name || (string)$ref->displayName === $name) {
                 return $ref;
             }
         }

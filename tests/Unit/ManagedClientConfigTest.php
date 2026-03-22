@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Gianfriaur\OpcuaPhpClient\Repository\ExtensionObjectRepository;
 use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
 use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 describe('ManagedClient Configuration', function () {
 
@@ -118,6 +121,49 @@ describe('ManagedClient Configuration', function () {
         it('returns null session ID when not connected', function () {
             $client = new ManagedClient();
             expect($client->getSessionId())->toBeNull();
+        });
+
+    });
+
+    describe('Logger', function () {
+
+        it('returns NullLogger by default', function () {
+            $client = new ManagedClient();
+            expect($client->getLogger())->toBeInstanceOf(NullLogger::class);
+        });
+
+        it('sets logger with fluent chaining', function () {
+            $client = new ManagedClient();
+            $logger = new NullLogger();
+            $result = $client->setLogger($logger);
+
+            expect($result)->toBe($client);
+            expect($client->getLogger())->toBe($logger);
+        });
+
+    });
+
+    describe('Cache', function () {
+
+        it('returns null cache by default', function () {
+            $client = new ManagedClient();
+            expect($client->getCache())->toBeNull();
+        });
+
+        it('sets cache with fluent chaining', function () {
+            $client = new ManagedClient();
+            $result = $client->setCache(null);
+
+            expect($result)->toBe($client);
+        });
+
+    });
+
+    describe('ExtensionObjectRepository', function () {
+
+        it('returns an ExtensionObjectRepository instance', function () {
+            $client = new ManagedClient();
+            expect($client->getExtensionObjectRepository())->toBeInstanceOf(ExtensionObjectRepository::class);
         });
 
     });

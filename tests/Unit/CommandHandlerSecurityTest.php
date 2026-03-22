@@ -40,7 +40,7 @@ describe('CommandHandler Security', function () {
             $session = new Session('sess1', $client, 'opc.tcp://localhost:4840', [], microtime(true));
             $this->store->create($session);
 
-            foreach (['setTimeout', 'setAutoRetry', 'setBatchSize', 'setDefaultBrowseMaxDepth'] as $method) {
+            foreach (['setTimeout', 'setAutoRetry', 'setBatchSize', 'setDefaultBrowseMaxDepth', 'setLogger', 'setCache'] as $method) {
                 $result = $this->handler->handle([
                     'command' => 'query',
                     'sessionId' => 'sess1',

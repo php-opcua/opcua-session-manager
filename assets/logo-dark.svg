@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 355 120" width="355" height="120">
+  <defs>
+    <linearGradient id="brand" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#A5B4FC" />
+      <stop offset="50%" stop-color="#818CF8" />
+      <stop offset="100%" stop-color="#6366F1" />
+    </linearGradient>
+    <linearGradient id="node" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C7D2FE" />
+      <stop offset="100%" stop-color="#818CF8" />
+    </linearGradient>
+    <linearGradient id="line" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818CF8" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#A5B4FC" stop-opacity="0.7" />
+    </linearGradient>
+    <linearGradient id="badge1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818CF8" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#A5B4FC" stop-opacity="0.18" />
+    </linearGradient>
+    <mask id="ringMask" maskContentUnits="userSpaceOnUse">
+      <rect x="-100" y="-100" width="500" height="500" fill="white" />
+      <circle cx="44" cy="44" r="12" fill="black" />
+    </mask>
+  </defs>
+
+  <g transform="translate(16, 16)">
+    <line x1="60" y1="32" x2="80" y2="16" stroke="url(#line)" stroke-width="2" stroke-linecap="round" />
+    <line x1="60" y1="56" x2="80" y2="72" stroke="url(#line)" stroke-width="2" stroke-linecap="round" />
+    <line x1="28" y1="32" x2="8" y2="16" stroke="url(#line)" stroke-width="2" stroke-linecap="round" />
+    <line x1="28" y1="56" x2="8" y2="72" stroke="url(#line)" stroke-width="2" stroke-linecap="round" />
+
+    <circle cx="44" cy="44" r="20" fill="url(#brand)" mask="url(#ringMask)" />
+
+    <circle cx="82" cy="14" r="5.5" fill="url(#node)" />
+    <circle cx="82" cy="74" r="5.5" fill="url(#node)" />
+    <circle cx="6" cy="14" r="5.5" fill="url(#node)" />
+    <circle cx="6" cy="74" r="5.5" fill="url(#node)" />
+
+    <path d="M 49 42.5 A 5.5 5.5 0 0 0 39 42.5" fill="none" stroke="url(#brand)" stroke-width="1.8" stroke-linecap="round" />
+    <path d="M 39 42.5 L 41.5 40 L 41.5 45 Z" fill="url(#brand)" />
+
+    <path d="M 39 45.5 A 5.5 5.5 0 0 0 49 45.5" fill="none" stroke="url(#brand)" stroke-width="1.8" stroke-linecap="round" />
+    <path d="M 49 45.5 L 46.5 43 L 46.5 48 Z" fill="url(#brand)" />
+  </g>
+
+  <text x="120" y="50" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="38" font-weight="900" fill="url(#brand)" letter-spacing="-1.5">
+    OPC UA
+  </text>
+
+  <text x="122" y="78" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="21" font-weight="800" fill="#A5B4FC" letter-spacing="0.3">
+    Session Manager
+  </text>
+
+  <rect x="120" y="92" width="82" height="18" rx="9" fill="url(#badge1)" />
+  <text x="161" y="104" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="9" font-weight="600" fill="#818CF8" text-anchor="middle" letter-spacing="1" opacity="0.7">
+    PHP CLIENT
+  </text>
+
+  <rect x="208" y="92" width="68" height="18" rx="9" fill="url(#brand)" />
+  <text x="242" y="104" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="9" font-weight="700" fill="#0F0E1A" text-anchor="middle" letter-spacing="1">
+    DAEMON
+  </text>
+</svg>

@@ -42,8 +42,8 @@ describe('Auto-generated certificate: connection', function () {
             $client->connect(TestHelper::ENDPOINT_AUTO_ACCEPT);
 
             $dataValue = $client->read(NodeId::numeric(0, 2259));
-            expect($dataValue->getStatusCode())->toBe(StatusCode::Good);
-            expect($dataValue->getValue())->toBeInt()->toBe(0);
+            expect($dataValue->statusCode)->toBe(StatusCode::Good);
+            expect($dataValue->value)->toBeInt()->toBe(0);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -60,7 +60,7 @@ describe('Auto-generated certificate: connection', function () {
             $refs = $client->browse(NodeId::numeric(0, 85));
             expect($refs)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn($r) => $r->getBrowseName()->getName(), $refs);
+            $names = array_map(fn($r) => $r->browseName->name, $refs);
             expect($names)->toContain('Server');
         } finally {
             TestHelper::safeDisconnect($client);
@@ -95,7 +95,7 @@ describe('Auto-generated certificate: connection', function () {
         expect($secondSession)->not->toBe($firstSession);
 
         $dataValue = $client->read(NodeId::numeric(0, 2259));
-        expect($dataValue->getValue())->toBeInt();
+        expect($dataValue->value)->toBeInt();
 
         $client->disconnect();
     })->group('integration');
@@ -155,8 +155,8 @@ describe('Auto-generated certificate: daemon list output', function () {
             expect($autoClient->getSessionId())->not->toBe($explicitClient->getSessionId());
 
             // Both sessions should return valid data
-            $v1 = $autoClient->read(NodeId::numeric(0, 2259))->getValue();
-            $v2 = $explicitClient->read(NodeId::numeric(0, 2259))->getValue();
+            $v1 = $autoClient->read(NodeId::numeric(0, 2259))->value;
+            $v2 = $explicitClient->read(NodeId::numeric(0, 2259))->value;
             expect($v1)->toBeInt();
             expect($v2)->toBeInt();
 

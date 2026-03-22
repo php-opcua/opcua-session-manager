@@ -1,0 +1,124 @@
+# OPC UA PHP Client Session Manager
+
+> Daemon-based session manager for opcua-php-client. Keeps OPC UA connections alive across PHP requests via a ReactPHP daemon and Unix socket IPC. ManagedClient is a drop-in replacement for Client — same OpcUaClientInterface, persistent sessions.
+
+## What is this
+
+A PHP library that solves the OPC UA session persistence problem in PHP's request/response model. A long-running ReactPHP daemon holds OPC UA sessions in memory, and PHP applications communicate with it via a Unix socket. The connection handshake (50–200ms) is paid once; all subsequent requests reuse the existing session.
+
+## Use cases
+
+- Keep OPC UA sessions alive across HTTP requests in Laravel, Symfony, or plain PHP
+- Avoid 50–200ms handshake overhead on every request
+- Maintain subscriptions and monitored items between requests
+- Run OPC UA operations from short-lived PHP-FPM workers
+
+## Key features
+
+- Drop-in replacement: ManagedClient implements the same OpcUaClientInterface as the direct Client
+- Session persistence: OPC UA sessions survive across PHP requests via the daemon
+- All OPC UA operations: browse, browseAll, browseRecursive, read, readMulti, write, writeMulti, call, subscriptions, history, path resolution, type discovery
+- Human-readable NodeId strings: all methods accept 'i=2259' or 'ns=2;s=MyNode' in addition to NodeId objects
+- Fluent Builder API: readMulti(), writeMulti(), createMonitoredItems(), translateBrowsePaths() support chainable builders when called without arguments
+- Typed returns: all service responses return public readonly DTOs (SubscriptionResult, CallResult, BrowseResultSet, PublishResult, BrowsePathResult, MonitoredItemResult, TransferResult)
+- Transfer & Recovery: transferSubscriptions() and republish() for session migration
+- Type Discovery: discoverDataTypes() forwarded to daemon
+- PSR-3 Logging: optional logger on ManagedClient
+- PSR-16 Cache: invalidateCache() and flushCache() forwarded to daemon
+- Security hardening: method whitelist (37 methods), IPC auth token, credential stripping, error sanitization, connection limits
+- Auto-retry and auto-batching forwarded to daemon's Client
+- Automatic cleanup: expired sessions closed after inactivity timeout
+- Graceful shutdown: SIGTERM/SIGINT disconnect all sessions
+
+## Architecture
+
+- ManagedClient (src/Client/ManagedClient.php): drop-in OpcUaClientInterface proxy, serializes calls to IPC
+- SocketConnection (src/Client/SocketConnection.php): Unix socket JSON transport
+- SessionManagerDaemon (src/Daemon/SessionManagerDaemon.php): ReactPHP daemon, event loop, cleanup timer, signal handlers
+- CommandHandler (src/Daemon/CommandHandler.php): IPC command dispatch, method whitelist, security enforcement
+- Session (src/Daemon/Session.php): session wrapper (Client + metadata + lastUsed)
+- SessionStore (src/Daemon/SessionStore.php): in-memory session registry with expiration
+- TypeSerializer (src/Serialization/TypeSerializer.php): bidirectional JSON serialization for all OPC UA types and DTOs
+
+## Installation
+
+```
+composer require gianfriaur/opcua-php-client-session-manager
+```
+
+## Quick example
+
+```php
+use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+
+// Start daemon first: php bin/opcua-session-manager
+
+$client = new ManagedClient();
+$client->connect('opc.tcp://localhost:4840');
+
+$value = $client->read('i=2259');
+echo $value->getValue();
+
+$refs = $client->browse('i=85');
+foreach ($refs as $ref) {
+    echo "{$ref->displayName} ({$ref->nodeId})\n";
+}
+
+$client->disconnect();
+```
+
+## Session persistence
+
+```php
+// Request 1: open session (handshake happens once)
+$client = new ManagedClient();
+$client->connect('opc.tcp://localhost:4840');
+$sessionId = $client->getSessionId();
+// Store $sessionId — do NOT disconnect
+
+// Request 2: session is still alive in daemon
+$client = new ManagedClient();
+$client->connect('opc.tcp://localhost:4840');
+$value = $client->read('i=2259'); // ~5ms instead of ~155ms
+```
+
+## Daemon options
+
+--socket, --timeout, --cleanup-interval, --auth-token, --auth-token-file, --max-sessions, --socket-mode, --allowed-cert-dirs
+
+## Main classes
+
+- Gianfriaur\OpcuaSessionManager\Client\ManagedClient — drop-in OpcUaClientInterface proxy
+- Gianfriaur\OpcuaSessionManager\Client\SocketConnection — Unix socket JSON transport
+- Gianfriaur\OpcuaSessionManager\Daemon\SessionManagerDaemon — ReactPHP daemon
+- Gianfriaur\OpcuaSessionManager\Daemon\CommandHandler — IPC command dispatch and security
+- Gianfriaur\OpcuaSessionManager\Daemon\Session — session wrapper
+- Gianfriaur\OpcuaSessionManager\Daemon\SessionStore — in-memory session registry
+- Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer — JSON ↔ OPC UA type conversion
+- Gianfriaur\OpcuaSessionManager\Exception\DaemonException — daemon communication errors
+- Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException — session not found
+- Gianfriaur\OpcuaSessionManager\Exception\SerializationException — type serialization errors
+
+## Related packages
+
+- gianfriaur/opcua-php-client: core OPC UA client library (required dependency)
+- gianfriaur/opcua-laravel-client: Laravel integration (service provider, facade, config)
+- GianfriAur/opcua-test-server-suite: Docker-based OPC UA test servers
+
+## Requirements
+
+- PHP >= 8.2
+- ext-openssl
+- ext-pcntl (recommended)
+- gianfriaur/opcua-php-client ^3.0
+
+## License
+
+MIT
+
+## Links
+
+- Repository: https://github.com/GianfriAur/opcua-php-client-session-manager
+- Documentation: https://github.com/GianfriAur/opcua-php-client-session-manager/tree/master/doc
+- Issues: https://github.com/GianfriAur/opcua-php-client-session-manager/issues
+- Packagist: https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager

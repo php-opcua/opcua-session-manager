@@ -6,14 +6,26 @@ namespace Gianfriaur\OpcuaSessionManager\Daemon;
 
 use DateTimeImmutable;
 use Gianfriaur\OpcuaPhpClient\Client;
+use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
 use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
 use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
 use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
+use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
+use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
+use Gianfriaur\OpcuaPhpClient\Types\NodeId;
+use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
+use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
 use Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException;
 use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
 use InvalidArgumentException;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use Psr\SimpleCache\CacheInterface;
 use Throwable;
 
+/**
+ * Processes IPC commands from clients, enforcing a method whitelist and sanitizing credentials and error messages.
+ */
 class CommandHandler
 {
     private const ALLOWED_METHODS = [
@@ -36,6 +48,8 @@ class CommandHandler
         'deleteMonitoredItems',
         'deleteSubscription',
         'publish',
+        'transferSubscriptions',
+        'republish',
         'historyReadRaw',
         'historyReadProcessed',
         'historyReadAtTime',
@@ -48,6 +62,9 @@ class CommandHandler
         'getDefaultBrowseMaxDepth',
         'getServerMaxNodesPerRead',
         'getServerMaxNodesPerWrite',
+        'discoverDataTypes',
+        'invalidateCache',
+        'flushCache',
     ];
 
     private const MAX_ERROR_MESSAGE_LENGTH = 500;
@@ -60,16 +77,31 @@ class CommandHandler
     ];
 
     private TypeSerializer $serializer;
+    private LoggerInterface $clientLogger;
 
+    /**
+     * @param SessionStore $store
+     * @param int $maxSessions
+     * @param ?array $allowedCertDirs
+     * @param ?LoggerInterface $clientLogger Logger to inject into each OPC UA Client created by the daemon.
+     * @param ?CacheInterface $clientCache Cache driver to inject into each OPC UA Client created by the daemon.
+     */
     public function __construct(
-        private readonly SessionStore $store,
-        private readonly int          $maxSessions = 100,
-        private readonly ?array       $allowedCertDirs = null,
+        private readonly SessionStore    $store,
+        private readonly int             $maxSessions = 100,
+        private readonly ?array          $allowedCertDirs = null,
+        ?LoggerInterface                 $clientLogger = null,
+        private readonly ?CacheInterface $clientCache = null,
     )
     {
         $this->serializer = new TypeSerializer();
+        $this->clientLogger = $clientLogger ?? new NullLogger();
     }
 
+    /**
+     * @param array $command
+     * @return array
+     */
     public function handle(array $command): array
     {
         try {
@@ -104,7 +136,11 @@ class CommandHandler
 
         $this->validateCertPaths($config);
 
-        $client = new Client();
+        $client = new Client(logger: $this->clientLogger);
+
+        if ($this->clientCache !== null) {
+            $client->setCache($this->clientCache);
+        }
 
         if (isset($config['opcuaTimeout'])) {
             $client->setTimeout((float)$config['opcuaTimeout']);
@@ -187,13 +223,126 @@ class CommandHandler
         $session->touch();
 
         $args = $this->deserializeParams($method, $params);
-        $result = $session->client->$method(...$args);
+
+        try {
+            $result = $session->client->$method(...$args);
+        } catch (ConnectionException $e) {
+            $recovered = $this->attemptSessionRecovery($session);
+            if (!$recovered) {
+                throw $e;
+            }
+            $result = $session->client->$method(...$args);
+        }
+
+        $this->trackSubscriptionChanges($session, $method, $args, $result);
 
         if ($result instanceof Client) {
             return $this->success(null);
         }
 
         return $this->success($this->serializer->serialize($result));
+    }
+
+    /**
+     * @param Session $session
+     * @return bool
+     */
+    private function attemptSessionRecovery(Session $session): bool
+    {
+        $this->clientLogger->warning('Connection lost for session {id}, attempting recovery', ['id' => $session->id]);
+
+        try {
+            $session->client->reconnect();
+        } catch (Throwable $e) {
+            $this->clientLogger->error('Reconnect failed for session {id}: {message}', [
+                'id' => $session->id,
+                'message' => $e->getMessage(),
+            ]);
+            return false;
+        }
+
+        $this->clientLogger->info('Reconnected session {id}', ['id' => $session->id]);
+
+        if (!$session->hasSubscriptions()) {
+            return true;
+        }
+
+        $subscriptionIds = $session->getSubscriptionIds();
+        $this->clientLogger->info('Transferring {count} subscription(s) for session {id}', [
+            'count' => count($subscriptionIds),
+            'id' => $session->id,
+        ]);
+
+        try {
+            $results = $session->client->transferSubscriptions($subscriptionIds, sendInitialValues: true);
+            $this->processTransferResults($session, $subscriptionIds, $results);
+        } catch (Throwable $e) {
+            $this->clientLogger->warning('Subscription transfer failed for session {id}: {message}', [
+                'id' => $session->id,
+                'message' => $e->getMessage(),
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
+     * @param Session $session
+     * @param int[] $subscriptionIds
+     * @param TransferResult[] $results
+     * @return void
+     */
+    private function processTransferResults(Session $session, array $subscriptionIds, array $results): void
+    {
+        foreach ($results as $i => $result) {
+            $subId = $subscriptionIds[$i] ?? null;
+            if ($subId === null) {
+                continue;
+            }
+
+            if ($result->statusCode !== 0) {
+                $this->clientLogger->warning('Subscription {subId} transfer failed (status: 0x{status}), removing from tracking', [
+                    'subId' => $subId,
+                    'status' => sprintf('%08X', $result->statusCode),
+                ]);
+                $session->removeSubscription($subId);
+                continue;
+            }
+
+            $this->clientLogger->info('Subscription {subId} transferred successfully ({seqCount} available sequence numbers)', [
+                'subId' => $subId,
+                'seqCount' => count($result->availableSequenceNumbers),
+            ]);
+
+            foreach ($result->availableSequenceNumbers as $seqNum) {
+                try {
+                    $session->client->republish($subId, $seqNum);
+                    $this->clientLogger->debug('Republished sequence {seq} for subscription {subId}', [
+                        'seq' => $seqNum,
+                        'subId' => $subId,
+                    ]);
+                } catch (Throwable) {
+                }
+            }
+        }
+    }
+
+    /**
+     * @param Session $session
+     * @param string $method
+     * @param array $args
+     * @param mixed $result
+     * @return void
+     */
+    private function trackSubscriptionChanges(Session $session, string $method, array $args, mixed $result): void
+    {
+        if ($method === 'createSubscription' && $result instanceof SubscriptionResult) {
+            $session->addSubscription($result->subscriptionId);
+        }
+
+        if ($method === 'deleteSubscription' && is_int($result) && $result === 0 && isset($args[0])) {
+            $session->removeSubscription((int)$args[0]);
+        }
     }
 
     private function handleList(): array
@@ -230,7 +379,6 @@ class CommandHandler
 
     private function sanitizeErrorMessage(string $message): string
     {
-        // Strip file paths from error messages
         $message = preg_replace('#/[^\s:]+/[^\s:]+#', '[path]', $message);
 
         if (strlen($message) > self::MAX_ERROR_MESSAGE_LENGTH) {
@@ -282,18 +430,36 @@ class CommandHandler
         throw new InvalidArgumentException("{$label} is not in an allowed directory: {$path}");
     }
 
+    /**
+     * @param int[] $values
+     * @return NodeClass[]
+     */
+    private function deserializeNodeClasses(array $values): array
+    {
+        return array_map(fn(int $v) => NodeClass::from($v), $values);
+    }
+
     private function deserializeParams(string $method, array $params): array
     {
         return match ($method) {
             'getEndpoints' => [
                 (string)$params[0],
+                (bool)($params[1] ?? true),
             ],
-            'browse', 'browseWithContinuation', 'browseAll' => [
+            'browse', 'browseAll' => [
                 $this->serializer->deserializeNodeId($params[0]),
                 BrowseDirection::from((int)($params[1] ?? 0)),
                 isset($params[2]) ? $this->serializer->deserializeNodeId($params[2]) : null,
                 (bool)($params[3] ?? true),
-                (int)($params[4] ?? 0),
+                $this->deserializeNodeClasses($params[4] ?? []),
+                (bool)($params[5] ?? true),
+            ],
+            'browseWithContinuation' => [
+                $this->serializer->deserializeNodeId($params[0]),
+                BrowseDirection::from((int)($params[1] ?? 0)),
+                isset($params[2]) ? $this->serializer->deserializeNodeId($params[2]) : null,
+                (bool)($params[3] ?? true),
+                $this->deserializeNodeClasses($params[4] ?? []),
             ],
             'browseRecursive' => [
                 $this->serializer->deserializeNodeId($params[0]),
@@ -301,7 +467,7 @@ class CommandHandler
                 isset($params[2]) ? (int)$params[2] : null,
                 isset($params[3]) ? $this->serializer->deserializeNodeId($params[3]) : null,
                 (bool)($params[4] ?? true),
-                (int)($params[5] ?? 0),
+                $this->deserializeNodeClasses($params[5] ?? []),
             ],
             'browseNext' => [
                 (string)$params[0],
@@ -322,6 +488,7 @@ class CommandHandler
             'resolveNodeId' => [
                 (string)$params[0],
                 isset($params[1]) ? $this->serializer->deserializeNodeId($params[1]) : null,
+                (bool)($params[2] ?? true),
             ],
             'read' => [
                 $this->serializer->deserializeNodeId($params[0]),
@@ -386,6 +553,14 @@ class CommandHandler
             'publish' => [
                 $params[0] ?? [],
             ],
+            'transferSubscriptions' => [
+                array_map('intval', $params[0] ?? []),
+                (bool)($params[1] ?? false),
+            ],
+            'republish' => [
+                (int)$params[0],
+                (int)$params[1],
+            ],
             'historyReadRaw' => [
                 $this->serializer->deserializeNodeId($params[0]),
                 isset($params[1]) ? new DateTimeImmutable($params[1]) : null,
@@ -404,10 +579,17 @@ class CommandHandler
                 $this->serializer->deserializeNodeId($params[0]),
                 array_map(fn(string $ts) => new DateTimeImmutable($ts), $params[1]),
             ],
+            'discoverDataTypes' => [
+                isset($params[0]) ? (int)$params[0] : null,
+                (bool)($params[1] ?? true),
+            ],
+            'invalidateCache' => [
+                $this->serializer->deserializeNodeId($params[0]),
+            ],
             'isConnected', 'getConnectionState', 'reconnect',
             'getTimeout', 'getAutoRetry', 'getBatchSize',
             'getDefaultBrowseMaxDepth', 'getServerMaxNodesPerRead',
-            'getServerMaxNodesPerWrite' => [],
+            'getServerMaxNodesPerWrite', 'flushCache' => [],
             default => throw new InvalidArgumentException("Unsupported method: {$method}"),
         };
     }

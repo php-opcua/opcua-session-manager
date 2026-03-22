@@ -20,7 +20,7 @@ describe('Browse recursive via ManagedClient', function () {
 
             expect($refs)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn($r) => $r->getBrowseName()->getName(), $refs);
+            $names = array_map(fn($r) => $r->browseName->name, $refs);
             expect($names)->toContain('Server');
         } finally {
             TestHelper::safeDisconnect($client);
@@ -40,7 +40,7 @@ describe('Browse recursive via ManagedClient', function () {
             $hasForward = false;
             $hasInverse = false;
             foreach ($refs as $ref) {
-                if ($ref->isForward()) {
+                if ($ref->isForward) {
                     $hasForward = true;
                 } else {
                     $hasInverse = true;
@@ -64,8 +64,8 @@ describe('Browse recursive via ManagedClient', function () {
             expect($tree)->toBeArray()->not->toBeEmpty();
             foreach ($tree as $node) {
                 expect($node)->toBeInstanceOf(BrowseNode::class);
-                expect($node->getNodeId())->toBeInstanceOf(NodeId::class);
-                expect($node->getBrowseName()->getName())->toBeString();
+                expect($node->reference->nodeId)->toBeInstanceOf(NodeId::class);
+                expect($node->reference->browseName->name)->toBeString();
             }
         } finally {
             TestHelper::safeDisconnect($client);
@@ -82,7 +82,7 @@ describe('Browse recursive via ManagedClient', function () {
 
             expect($tree)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn(BrowseNode $n) => $n->getBrowseName()->getName(), $tree);
+            $names = array_map(fn(BrowseNode $n) => $n->reference->browseName->name, $tree);
             expect($names)->toContain('DataTypes');
             expect($names)->toContain('Methods');
 
@@ -108,7 +108,7 @@ describe('Browse recursive via ManagedClient', function () {
 
             $dataTypesNode = null;
             foreach ($tree as $node) {
-                if ($node->getBrowseName()->getName() === 'DataTypes') {
+                if ($node->reference->browseName->name === 'DataTypes') {
                     $dataTypesNode = $node;
                     break;
                 }
@@ -118,7 +118,7 @@ describe('Browse recursive via ManagedClient', function () {
             expect($dataTypesNode->hasChildren())->toBeTrue();
 
             $childNames = array_map(
-                fn(BrowseNode $n) => $n->getBrowseName()->getName(),
+                fn(BrowseNode $n) => $n->reference->browseName->name,
                 $dataTypesNode->getChildren(),
             );
             expect($childNames)->toContain('Scalar');

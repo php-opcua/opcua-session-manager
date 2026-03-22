@@ -20,7 +20,7 @@ describe('Browse via ManagedClient', function () {
 
             expect($refs)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn($r) => $r->getBrowseName()->getName(), $refs);
+            $names = array_map(fn($r) => $r->browseName->name, $refs);
             expect($names)->toContain('Server');
         } finally {
             TestHelper::safeDisconnect($client);
@@ -36,7 +36,7 @@ describe('Browse via ManagedClient', function () {
 
             expect($refs)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn($r) => $r->getBrowseName()->getName(), $refs);
+            $names = array_map(fn($r) => $r->browseName->name, $refs);
             expect($names)->toContain('DataTypes');
             expect($names)->toContain('Methods');
             expect($names)->toContain('Dynamic');
@@ -54,7 +54,7 @@ describe('Browse via ManagedClient', function () {
 
             expect($refs)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn($r) => $r->getBrowseName()->getName(), $refs);
+            $names = array_map(fn($r) => $r->browseName->name, $refs);
             expect($names)->toContain('Scalar');
         } finally {
             TestHelper::safeDisconnect($client);
@@ -70,7 +70,7 @@ describe('Browse via ManagedClient', function () {
 
             expect($refs)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn($r) => $r->getBrowseName()->getName(), $refs);
+            $names = array_map(fn($r) => $r->browseName->name, $refs);
             expect($names)->toContain('Add');
             expect($names)->toContain('Multiply');
         } finally {
@@ -86,9 +86,9 @@ describe('Browse via ManagedClient', function () {
             $refs = $client->browse($testServerNodeId);
 
             foreach ($refs as $ref) {
-                $name = $ref->getBrowseName()->getName();
+                $name = $ref->browseName->name;
                 if (in_array($name, ['DataTypes', 'Methods', 'Dynamic'], true)) {
-                    expect($ref->getNodeClass())->toBe(NodeClass::Object);
+                    expect($ref->nodeClass)->toBe(NodeClass::Object);
                 }
             }
         } finally {
@@ -106,7 +106,7 @@ describe('Browse via ManagedClient', function () {
 
             expect($refs)->toBeArray()->not->toBeEmpty();
             foreach ($refs as $ref) {
-                expect($ref->isForward())->toBeFalse();
+                expect($ref->isForward)->toBeFalse();
             }
         } finally {
             TestHelper::safeDisconnect($client);
@@ -127,7 +127,7 @@ describe('Browse via ManagedClient', function () {
 
             expect($refs)->toBeArray()->not->toBeEmpty();
             foreach ($refs as $ref) {
-                expect($ref->isForward())->toBeTrue();
+                expect($ref->isForward)->toBeTrue();
             }
         } finally {
             TestHelper::safeDisconnect($client);
@@ -141,10 +141,7 @@ describe('Browse via ManagedClient', function () {
 
             $result = $client->browseWithContinuation(NodeId::numeric(0, 85));
 
-            expect($result)->toBeArray();
-            expect($result)->toHaveKey('references');
-            expect($result)->toHaveKey('continuationPoint');
-            expect($result['references'])->toBeArray()->not->toBeEmpty();
+            expect($result->references)->toBeArray()->not->toBeEmpty();
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -157,7 +154,7 @@ describe('Browse via ManagedClient', function () {
             $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'BooleanValue']);
 
             expect($nodeId)->toBeInstanceOf(NodeId::class);
-            expect($nodeId->getNamespaceIndex())->toBeGreaterThanOrEqual(0);
+            expect($nodeId->namespaceIndex)->toBeGreaterThanOrEqual(0);
         } finally {
             TestHelper::safeDisconnect($client);
         }

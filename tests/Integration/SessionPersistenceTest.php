@@ -23,7 +23,7 @@ describe('Session Persistence', function () {
 
         // Read something with client1
         $dv1 = $client1->read(NodeId::numeric(0, 2259));
-        expect($dv1->getStatusCode())->toBe(StatusCode::Good);
+        expect($dv1->statusCode)->toBe(StatusCode::Good);
 
         // Don't disconnect — just let $client1 go out of scope (simulating end of request)
         unset($client1);
@@ -103,8 +103,8 @@ describe('Session Persistence', function () {
             // Both can independently read
             $dv1 = $client1->read(NodeId::numeric(0, 2259));
             $dv2 = $client2->read(NodeId::numeric(0, 2259));
-            expect($dv1->getStatusCode())->toBe(StatusCode::Good);
-            expect($dv2->getStatusCode())->toBe(StatusCode::Good);
+            expect($dv1->statusCode)->toBe(StatusCode::Good);
+            expect($dv2->statusCode)->toBe(StatusCode::Good);
 
             // Both can independently browse
             $refs1 = $client1->browse(NodeId::numeric(0, 85));
@@ -130,7 +130,7 @@ describe('Session Persistence', function () {
 
             // Client2 should still work
             $dv = $client2->read(NodeId::numeric(0, 2259));
-            expect($dv->getStatusCode())->toBe(StatusCode::Good);
+            expect($dv->statusCode)->toBe(StatusCode::Good);
         } finally {
             TestHelper::safeDisconnect($client1);
             TestHelper::safeDisconnect($client2);

@@ -11,7 +11,7 @@ afterAll(fn() => TestHelper::stopDaemon());
 
 describe('Write via ManagedClient', function () {
 
-    // ── Scalar writes ───────────────────────────────────────────────
+    // -- Scalar writes --
 
     describe('Write and read back scalars', function () {
 
@@ -25,15 +25,15 @@ describe('Write via ManagedClient', function () {
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeTrue();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeTrue();
 
                 // Write false
                 $statusCode = $client->write($nodeId, false, BuiltinType::Boolean);
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getValue())->toBeFalse();
+                expect($dv->value)->toBeFalse();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -49,8 +49,8 @@ describe('Write via ManagedClient', function () {
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBe(12345);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBe(12345);
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -66,8 +66,8 @@ describe('Write via ManagedClient', function () {
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect(abs($dv->getValue() - 3.14159))->toBeLessThan(0.0001);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect(abs($dv->value - 3.14159))->toBeLessThan(0.0001);
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -84,8 +84,8 @@ describe('Write via ManagedClient', function () {
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBe($testString);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBe($testString);
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -101,8 +101,8 @@ describe('Write via ManagedClient', function () {
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBe(200);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBe(200);
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -110,7 +110,7 @@ describe('Write via ManagedClient', function () {
 
     });
 
-    // ── WriteMulti ──────────────────────────────────────────────────
+    // -- WriteMulti --
 
     describe('WriteMulti', function () {
 
@@ -132,10 +132,10 @@ describe('Write via ManagedClient', function () {
 
                 // Read back
                 $dvInt = $client->read($intNodeId);
-                expect($dvInt->getValue())->toBe(9999);
+                expect($dvInt->value)->toBe(9999);
 
                 $dvStr = $client->read($strNodeId);
-                expect($dvStr->getValue())->toBe('multi-write-test');
+                expect($dvStr->value)->toBe('multi-write-test');
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -143,7 +143,7 @@ describe('Write via ManagedClient', function () {
 
     });
 
-    // ── Array writes ────────────────────────────────────────────────
+    // -- Array writes --
 
     describe('Array writes', function () {
 
@@ -158,8 +158,8 @@ describe('Write via ManagedClient', function () {
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBe($values);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBe($values);
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -176,8 +176,8 @@ describe('Write via ManagedClient', function () {
                 expect(StatusCode::isGood($statusCode))->toBeTrue();
 
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBe($values);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBe($values);
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -185,7 +185,7 @@ describe('Write via ManagedClient', function () {
 
     });
 
-    // ── Read-only writes ────────────────────────────────────────────
+    // -- Read-only writes --
 
     describe('Write to read-only variables', function () {
 

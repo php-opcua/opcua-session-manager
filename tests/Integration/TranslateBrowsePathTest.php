@@ -20,8 +20,8 @@ describe('Translate browse path via ManagedClient', function () {
             $nodeId = $client->resolveNodeId('/Objects/Server/ServerStatus');
 
             expect($nodeId)->toBeInstanceOf(NodeId::class);
-            expect($nodeId->getNamespaceIndex())->toBe(0);
-            expect($nodeId->getIdentifier())->toBe(2256);
+            expect($nodeId->namespaceIndex)->toBe(0);
+            expect($nodeId->identifier)->toBe(2256);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -35,8 +35,8 @@ describe('Translate browse path via ManagedClient', function () {
             $nodeId = $client->resolveNodeId('/Objects/Server');
 
             expect($nodeId)->toBeInstanceOf(NodeId::class);
-            expect($nodeId->getNamespaceIndex())->toBe(0);
-            expect($nodeId->getIdentifier())->toBe(2253);
+            expect($nodeId->namespaceIndex)->toBe(0);
+            expect($nodeId->identifier)->toBe(2253);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -50,7 +50,7 @@ describe('Translate browse path via ManagedClient', function () {
             $nodeId = $client->resolveNodeId('Server', NodeId::numeric(0, 85));
 
             expect($nodeId)->toBeInstanceOf(NodeId::class);
-            expect($nodeId->getIdentifier())->toBe(2253);
+            expect($nodeId->identifier)->toBe(2253);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -75,7 +75,7 @@ describe('Translate browse path via ManagedClient', function () {
             expect($results[0]['statusCode'])->toBe(StatusCode::Good);
             expect($results[0]['targets'])->toBeArray()->not->toBeEmpty();
             expect($results[0]['targets'][0]['targetId'])->toBeInstanceOf(NodeId::class);
-            expect($results[0]['targets'][0]['targetId']->getIdentifier())->toBe(2253);
+            expect($results[0]['targets'][0]['targetId']->identifier)->toBe(2253);
         } finally {
             TestHelper::safeDisconnect($client);
         }

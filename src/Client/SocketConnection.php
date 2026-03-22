@@ -6,8 +6,19 @@ namespace Gianfriaur\OpcuaSessionManager\Client;
 
 use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
 
+/**
+ * Low-level Unix socket transport for sending JSON-encoded IPC commands to the daemon.
+ */
 class SocketConnection
 {
+    /**
+     * @param string $socketPath Path to the daemon's Unix socket file.
+     * @param array $payload The command payload to send.
+     * @param float $timeout Timeout in seconds.
+     * @return array The decoded JSON response from the daemon.
+     *
+     * @throws DaemonException If the socket is missing, the connection fails, the request times out, or the response is invalid.
+     */
     public static function send(string $socketPath, array $payload, float $timeout = 30.0): array
     {
         if (!file_exists($socketPath)) {

@@ -11,7 +11,7 @@ afterAll(fn() => TestHelper::stopDaemon());
 
 describe('Read via ManagedClient', function () {
 
-    // ── Scalar reads ────────────────────────────────────────────────
+    // -- Scalar reads ----
 
     describe('Scalar', function () {
 
@@ -21,8 +21,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'BooleanValue']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeBool();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeBool();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -34,8 +34,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'Int32Value']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeInt();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeInt();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -47,8 +47,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'DoubleValue']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeFloat();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeFloat();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -60,8 +60,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'StringValue']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeString();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeString();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -73,8 +73,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'FloatValue']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeFloat();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeFloat();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -86,8 +86,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'ByteValue']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeInt();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeInt();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -99,8 +99,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Scalar', 'UInt16Value']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeInt();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeInt();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -108,7 +108,7 @@ describe('Read via ManagedClient', function () {
 
     });
 
-    // ── Multi-read ──────────────────────────────────────────────────
+    // -- Multi-read --
 
     describe('ReadMulti', function () {
 
@@ -127,12 +127,12 @@ describe('Read via ManagedClient', function () {
                 ]);
 
                 expect($results)->toHaveCount(3);
-                expect($results[0]->getStatusCode())->toBe(StatusCode::Good);
-                expect($results[0]->getValue())->toBeBool();
-                expect($results[1]->getStatusCode())->toBe(StatusCode::Good);
-                expect($results[1]->getValue())->toBeInt();
-                expect($results[2]->getStatusCode())->toBe(StatusCode::Good);
-                expect($results[2]->getValue())->toBeString();
+                expect($results[0]->statusCode)->toBe(StatusCode::Good);
+                expect($results[0]->value)->toBeBool();
+                expect($results[1]->statusCode)->toBe(StatusCode::Good);
+                expect($results[1]->value)->toBeInt();
+                expect($results[2]->statusCode)->toBe(StatusCode::Good);
+                expect($results[2]->value)->toBeString();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -140,7 +140,7 @@ describe('Read via ManagedClient', function () {
 
     });
 
-    // ── Server State ────────────────────────────────────────────────
+    // -- Server State --
 
     describe('Server State', function () {
 
@@ -149,8 +149,8 @@ describe('Read via ManagedClient', function () {
             try {
                 $client = TestHelper::connectNoSecurity();
                 $dv = $client->read(NodeId::numeric(0, 2259));
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBe(0);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBe(0);
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -158,7 +158,7 @@ describe('Read via ManagedClient', function () {
 
     });
 
-    // ── Array reads ─────────────────────────────────────────────────
+    // -- Array reads --
 
     describe('Array', function () {
 
@@ -168,8 +168,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Array', 'Int32Array']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeArray()->not->toBeEmpty();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeArray()->not->toBeEmpty();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -181,8 +181,8 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'Array', 'StringArray']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeArray()->not->toBeEmpty();
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeArray()->not->toBeEmpty();
             } finally {
                 TestHelper::safeDisconnect($client);
             }
@@ -190,7 +190,7 @@ describe('Read via ManagedClient', function () {
 
     });
 
-    // ── WithRange (AnalogDataItems) ─────────────────────────────────
+    // -- WithRange (AnalogDataItems) --
 
     describe('WithRange', function () {
 
@@ -200,9 +200,9 @@ describe('Read via ManagedClient', function () {
                 $client = TestHelper::connectNoSecurity();
                 $nodeId = TestHelper::browseToNode($client, ['TestServer', 'DataTypes', 'WithRange', 'Temperature']);
                 $dv = $client->read($nodeId);
-                expect($dv->getStatusCode())->toBe(StatusCode::Good);
-                expect($dv->getValue())->toBeFloat();
-                expect($dv->getValue())->toBeGreaterThan(20.0)->toBeLessThan(25.0);
+                expect($dv->statusCode)->toBe(StatusCode::Good);
+                expect($dv->value)->toBeFloat();
+                expect($dv->value)->toBeGreaterThan(20.0)->toBeLessThan(25.0);
             } finally {
                 TestHelper::safeDisconnect($client);
             }

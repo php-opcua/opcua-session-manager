@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Gianfriaur\OpcuaSessionManager\Daemon;
 
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
+use Psr\SimpleCache\CacheInterface;
 use React\EventLoop\Loop;
 use React\EventLoop\LoopInterface;
 use React\Socket\ConnectionInterface;
@@ -11,10 +14,13 @@ use React\Socket\UnixServer;
 use RuntimeException;
 use Throwable;
 
+/**
+ * Long-running ReactPHP daemon that manages persistent OPC UA sessions over a Unix socket.
+ */
 class SessionManagerDaemon
 {
-    private const MAX_BUFFER_SIZE = 1_048_576; // 1 MB
-    private const IPC_CONNECTION_TIMEOUT = 30; // seconds
+    private const MAX_BUFFER_SIZE = 1_048_576;
+    private const IPC_CONNECTION_TIMEOUT = 30;
     private const MAX_CONCURRENT_CONNECTIONS = 50;
 
     private SessionStore $store;
@@ -23,7 +29,19 @@ class SessionManagerDaemon
     private ?UnixServer $server = null;
     private string $pidFilePath;
     private int $activeConnections = 0;
+    private LoggerInterface $logger;
 
+    /**
+     * @param string $socketPath Path to the Unix socket file.
+     * @param int $timeout Session inactivity timeout in seconds.
+     * @param int $cleanupInterval Interval in seconds between expired session cleanup runs.
+     * @param ?string $authToken Shared secret for IPC authentication, or null to disable.
+     * @param int $maxSessions Maximum number of concurrent sessions.
+     * @param int $socketMode File permissions for the socket file.
+     * @param ?array $allowedCertDirs Restrict certificate paths to these directories, or null for no restriction.
+     * @param ?LoggerInterface $logger Logger for daemon events. Also injected into each OPC UA Client.
+     * @param ?CacheInterface $clientCache Cache driver injected into each OPC UA Client created by the daemon.
+     */
     public function __construct(
         private readonly string  $socketPath,
         private readonly int     $timeout = 600,
@@ -32,14 +50,28 @@ class SessionManagerDaemon
         private readonly int     $maxSessions = 100,
         private readonly int     $socketMode = 0600,
         private readonly ?array  $allowedCertDirs = null,
+        ?LoggerInterface         $logger = null,
+        ?CacheInterface          $clientCache = null,
     )
     {
+        $this->logger = $logger ?? new NullLogger();
         $this->store = new SessionStore();
-        $this->handler = new CommandHandler($this->store, $this->maxSessions, $this->allowedCertDirs);
+        $this->handler = new CommandHandler(
+            $this->store,
+            $this->maxSessions,
+            $this->allowedCertDirs,
+            $this->logger,
+            $clientCache,
+        );
         $this->loop = Loop::get();
         $this->pidFilePath = $this->socketPath . '.pid';
     }
 
+    /**
+     * @return void
+     *
+     * @throws RuntimeException If another daemon instance is already running.
+     */
     public function run(): void
     {
         $this->acquirePidLock();
@@ -53,7 +85,6 @@ class SessionManagerDaemon
         chmod($this->socketPath, $this->socketMode);
 
         $this->server->on('connection', function (ConnectionInterface $connection) {
-            // Reject if too many concurrent connections
             if ($this->activeConnections >= self::MAX_CONCURRENT_CONNECTIONS) {
                 $response = ['success' => false, 'error' => ['type' => 'too_many_connections', 'message' => 'Too many concurrent connections']];
                 $connection->write(json_encode($response) . "\n");
@@ -63,7 +94,6 @@ class SessionManagerDaemon
 
             $this->activeConnections++;
 
-            // Per-connection timeout to prevent slowloris-style attacks
             $timeoutTimer = $this->loop->addTimer(self::IPC_CONNECTION_TIMEOUT, function () use ($connection) {
                 $response = ['success' => false, 'error' => ['type' => 'connection_timeout', 'message' => 'IPC connection timed out']];
                 $connection->write(json_encode($response) . "\n");
@@ -94,7 +124,6 @@ class SessionManagerDaemon
                     return;
                 }
 
-                // Cancel timeout — we received a complete request
                 if ($timeoutTimer !== null) {
                     $this->loop->cancelTimer($timeoutTimer);
                     $timeoutTimer = null;
@@ -114,6 +143,7 @@ class SessionManagerDaemon
                 if ($this->authToken !== null) {
                     $providedToken = $command['authToken'] ?? null;
                     if (!is_string($providedToken) || !hash_equals($this->authToken, $providedToken)) {
+                        $this->logger->warning('Authentication failed from IPC client');
                         $response = ['success' => false, 'error' => ['type' => 'auth_failed', 'message' => 'Invalid or missing auth token']];
                         $connection->write(json_encode($response) . "\n");
                         $connection->end();
@@ -136,13 +166,16 @@ class SessionManagerDaemon
         $this->setupSignalHandlers();
 
         if ($this->authToken === null) {
-            echo "WARNING: No auth token configured. Any local process can control the daemon.\n";
-            echo "         Use --auth-token or --auth-token-file for production deployments.\n";
+            $this->logger->warning('No auth token configured. Any local process can control the daemon.');
         }
 
-        echo "OPC UA Session Manager started on {$this->socketPath}\n";
-        echo "Timeout: {$this->timeout}s, Cleanup interval: {$this->cleanupInterval}s, Max sessions: {$this->maxSessions}\n";
-        echo "Socket permissions: " . decoct($this->socketMode) . "\n";
+        $this->logger->info('OPC UA Session Manager started on {socket}', ['socket' => $this->socketPath]);
+        $this->logger->info('Timeout: {timeout}s, Cleanup interval: {cleanup}s, Max sessions: {max}', [
+            'timeout' => $this->timeout,
+            'cleanup' => $this->cleanupInterval,
+            'max' => $this->maxSessions,
+        ]);
+        $this->logger->info('Socket permissions: {mode}', ['mode' => decoct($this->socketMode)]);
 
         $this->loop->run();
     }
@@ -156,18 +189,21 @@ class SessionManagerDaemon
             } catch (Throwable) {
             }
             $this->store->remove($session->id);
-            echo "Session {$session->id} expired (endpoint: {$session->endpointUrl})\n";
+            $this->logger->info('Session {id} expired (endpoint: {endpoint})', [
+                'id' => $session->id,
+                'endpoint' => $session->endpointUrl,
+            ]);
         }
     }
 
     private function shutdown(): void
     {
-        echo "\nShutting down...\n";
+        $this->logger->info('Shutting down...');
 
         foreach ($this->store->all() as $session) {
             try {
                 $session->client->disconnect();
-                echo "Disconnected session {$session->id}\n";
+                $this->logger->info('Disconnected session {id}', ['id' => $session->id]);
             } catch (Throwable) {
             }
             $this->store->remove($session->id);

@@ -19,8 +19,8 @@ describe('Timeout configuration via ManagedClient', function () {
             $client->connect(TestHelper::ENDPOINT_NO_SECURITY);
 
             $dv = $client->read(NodeId::numeric(0, 2259));
-            expect($dv->getStatusCode())->toBe(StatusCode::Good);
-            expect($dv->getValue())->toBe(0);
+            expect($dv->statusCode)->toBe(StatusCode::Good);
+            expect($dv->value)->toBe(0);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -61,8 +61,8 @@ describe('Batching configuration via ManagedClient', function () {
             ]);
 
             expect($results)->toHaveCount(2);
-            expect($results[0]->getStatusCode())->toBe(StatusCode::Good);
-            expect($results[1]->getStatusCode())->toBe(StatusCode::Good);
+            expect($results[0]->statusCode)->toBe(StatusCode::Good);
+            expect($results[1]->statusCode)->toBe(StatusCode::Good);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -91,7 +91,7 @@ describe('Batching configuration via ManagedClient', function () {
             $client->connect(TestHelper::ENDPOINT_NO_SECURITY);
 
             $dv = $client->read(NodeId::numeric(0, 2259));
-            expect($dv->getStatusCode())->toBe(StatusCode::Good);
+            expect($dv->statusCode)->toBe(StatusCode::Good);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -111,7 +111,7 @@ describe('Auto-retry configuration via ManagedClient', function () {
             expect($client->getAutoRetry())->toBe(2);
 
             $dv = $client->read(NodeId::numeric(0, 2259));
-            expect($dv->getStatusCode())->toBe(StatusCode::Good);
+            expect($dv->statusCode)->toBe(StatusCode::Good);
         } finally {
             TestHelper::safeDisconnect($client);
         }

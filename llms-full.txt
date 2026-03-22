@@ -1,0 +1,400 @@
+# OPC UA PHP Client Session Manager — Full Documentation
+
+> Daemon-based session manager for opcua-php-client. Keeps OPC UA connections alive across PHP requests via a ReactPHP daemon and Unix socket IPC. ManagedClient is a drop-in replacement for Client — same OpcUaClientInterface, persistent sessions.
+
+Package: gianfriaur/opcua-php-client-session-manager
+Repository: https://github.com/GianfriAur/opcua-php-client-session-manager
+Packagist: https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager
+License: MIT
+PHP: >= 8.2
+Dependencies: gianfriaur/opcua-php-client ^3.0, react/event-loop ^1.5, react/socket ^1.16, psr/log ^3.0, psr/simple-cache ^3.0
+
+---
+
+## 1. Overview
+
+PHP's request/response model destroys all state at the end of every request. OPC UA requires a 5-step handshake (TCP → Hello/Ack → OpenSecureChannel → CreateSession → ActivateSession) costing 50–200ms. This package solves the problem with a long-running ReactPHP daemon that holds sessions in memory, communicating via Unix socket IPC.
+
+### Architecture
+
+```
+PHP Request (short-lived) ←→ Unix Socket IPC ←→ SessionManagerDaemon (ReactPHP) ←→ TCP ←→ OPC UA Server
+```
+
+Components:
+- ManagedClient: drop-in OpcUaClientInterface proxy, translates method calls to IPC
+- SessionManagerDaemon: ReactPHP event loop, Unix socket server, cleanup timer, signal handlers
+- CommandHandler: IPC dispatch, method whitelist (37 methods), credential sanitization
+- TypeSerializer: bidirectional JSON serialization for all OPC UA types and v3.0.0 DTOs
+- SessionStore: in-memory session registry with expiration
+
+### Installation
+
+```
+composer require gianfriaur/opcua-php-client-session-manager
+```
+
+### Quick Start
+
+```bash
+php bin/opcua-session-manager
+```
+
+```php
+use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+
+$client = new ManagedClient();
+$client->connect('opc.tcp://localhost:4840');
+
+$value = $client->read('i=2259');
+echo $value->getValue();
+
+$client->disconnect();
+```
+
+---
+
+## 2. Daemon
+
+### Starting
+
+```bash
+php bin/opcua-session-manager [options]
+```
+
+### CLI Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--socket` | `/tmp/opcua-session-manager.sock` | Unix socket path |
+| `--timeout` | `600` | Session inactivity timeout (seconds) |
+| `--cleanup-interval` | `30` | Cleanup timer interval (seconds) |
+| `--auth-token` | none | IPC auth token (visible in ps) |
+| `--auth-token-file` | none | Read auth token from file |
+| `--max-sessions` | `100` | Max concurrent sessions |
+| `--socket-mode` | `0600` | Socket file permissions |
+| `--allowed-cert-dirs` | none | Comma-separated cert directories |
+
+Auth priority: OPCUA_AUTH_TOKEN env > --auth-token-file > --auth-token
+
+### Security
+
+- IPC authentication: timing-safe hash_equals()
+- Socket permissions: 0600 default
+- Method whitelist: 37 allowed operations, setters blocked
+- Credential stripping: passwords/key paths removed after connection
+- Input limit: 1MB max request
+- Connection limits: 30s timeout, 50 max concurrent
+- Error sanitization: messages truncated, file paths stripped
+- PID lock: prevents duplicate instances
+
+### Running as Service
+
+systemd or Supervisor supported. See doc/daemon.md for examples.
+
+---
+
+## 3. ManagedClient API
+
+### Constructor
+
+```php
+$client = new ManagedClient(
+    socketPath: '/tmp/opcua-session-manager.sock',
+    timeout: 30.0,
+    authToken: 'my-secret',
+);
+```
+
+### Configuration
+
+```php
+$client->setTimeout(10.0);
+$client->setAutoRetry(3);
+$client->setBatchSize(50);
+$client->setDefaultBrowseMaxDepth(20);
+$client->setSecurityPolicy(SecurityPolicy::Basic256Sha256);
+$client->setSecurityMode(SecurityMode::SignAndEncrypt);
+$client->setClientCertificate('/certs/client.pem', '/certs/client.key', '/certs/ca.pem');
+$client->setUserCredentials('operator', 'secret');
+$client->setUserCertificate('/certs/user.pem', '/certs/user.key');
+$client->setLogger($logger);
+$client->setCache($cache);
+```
+
+### Connection
+
+```php
+$client->connect('opc.tcp://localhost:4840');
+$client->isConnected();
+$client->getConnectionState();    // ConnectionState enum
+$client->reconnect();
+$client->disconnect();
+$client->getSessionId();          // session ID for persistence
+```
+
+### String NodeIds
+
+All methods accept NodeId|string. Strings parsed via NodeId::parse().
+
+```php
+$client->read('i=2259');
+$client->browse('ns=2;s=MyFolder');
+$client->write('ns=2;i=1001', 42, BuiltinType::Int32);
+```
+
+### Browse
+
+```php
+$refs = $client->browse('i=85', nodeClasses: [NodeClass::Object]);
+$result = $client->browseWithContinuation('i=85');  // BrowseResultSet
+$result = $client->browseNext($continuationPoint);   // BrowseResultSet
+$refs = $client->browseAll('i=85', useCache: false);
+$tree = $client->browseRecursive('i=85', maxDepth: 3);
+```
+
+ReferenceDescription properties: referenceTypeId, isForward, nodeId, browseName, displayName, nodeClass, typeDefinition
+BrowseNode: reference (ReferenceDescription), getChildren(), hasChildren()
+
+### Path Resolution
+
+```php
+$nodeId = $client->resolveNodeId('/Objects/Server/ServerStatus');
+
+$results = $client->translateBrowsePaths()
+    ->from('i=85')->path('Server', 'ServerStatus')
+    ->execute();
+// Returns BrowsePathResult[]
+```
+
+### Read / Write
+
+```php
+$dv = $client->read('i=2259');
+$dv->getValue();       // unwrapped scalar
+$dv->statusCode;       // int
+$dv->sourceTimestamp;   // ?DateTimeImmutable
+
+$results = $client->readMulti()
+    ->node('i=2259')->value()
+    ->node('ns=2;i=1001')->displayName()
+    ->execute();
+
+$status = $client->write('ns=2;i=1001', 42, BuiltinType::Int32);
+
+$statuses = $client->writeMulti([
+    ['nodeId' => 'ns=2;i=1001', 'value' => 42, 'type' => BuiltinType::Int32],
+]);
+```
+
+### Method Call
+
+```php
+$result = $client->call('i=2253', 'i=11492', [new Variant(BuiltinType::UInt32, 1)]);
+$result->statusCode;
+$result->outputArguments;      // Variant[]
+$result->inputArgumentResults; // int[]
+```
+
+### Subscriptions
+
+```php
+$sub = $client->createSubscription(publishingInterval: 500.0);
+// SubscriptionResult: subscriptionId, revisedPublishingInterval, revisedLifetimeCount, revisedMaxKeepAliveCount
+
+$items = $client->createMonitoredItems($sub->subscriptionId, [
+    ['nodeId' => 'ns=2;i=1001'],
+]);
+// MonitoredItemResult[]: statusCode, monitoredItemId, revisedSamplingInterval, revisedQueueSize
+
+$response = $client->publish();
+// PublishResult: subscriptionId, sequenceNumber, moreNotifications, notifications, availableSequenceNumbers
+
+$client->deleteMonitoredItems($sub->subscriptionId, [$items[0]->monitoredItemId]);
+$client->deleteSubscription($sub->subscriptionId);
+```
+
+### Transfer & Recovery
+
+```php
+$results = $client->transferSubscriptions([1, 2], sendInitialValues: true);
+// TransferResult[]: statusCode, availableSequenceNumbers
+
+$notifications = $client->republish(subscriptionId: 1, retransmitSequenceNumber: 42);
+```
+
+### History
+
+```php
+$values = $client->historyReadRaw('ns=2;i=1001', startTime: new DateTimeImmutable('-1 hour'), endTime: new DateTimeImmutable());
+$values = $client->historyReadProcessed('ns=2;i=1001', $start, $end, 3600000.0, 'i=2342');
+$values = $client->historyReadAtTime('ns=2;i=1001', $timestamps);
+```
+
+### Type Discovery
+
+```php
+$count = $client->discoverDataTypes();
+$count = $client->discoverDataTypes(namespaceIndex: 2, useCache: false);
+```
+
+### Cache Management
+
+```php
+$client->invalidateCache('i=85');   // forwarded to daemon
+$client->flushCache();              // forwarded to daemon
+```
+
+### Endpoints
+
+```php
+$endpoints = $client->getEndpoints('opc.tcp://localhost:4840', useCache: true);
+```
+
+### Error Handling
+
+```php
+try {
+    $value = $client->read('i=2259');
+} catch (ConnectionException $e) { /* connection lost or session expired */ }
+  catch (ServiceException $e)    { /* OPC UA server error */ }
+  catch (DaemonException $e)     { /* IPC error */ }
+```
+
+---
+
+## 4. IPC Protocol
+
+Transport: Unix domain socket, JSON + \n delimiter, 1MB max, 30s timeout
+
+### Commands
+
+**ping**: health check → {status, sessions, time}
+**list**: active sessions (sanitized) → {count, sessions[]}
+**open**: create session → {sessionId}
+**close**: disconnect session → null
+**query**: execute OPC UA method → serialized result
+
+### Authentication
+
+Include "authToken" in every request. Validated with hash_equals().
+
+### Allowed Query Methods (37)
+
+Browse: browse, browseWithContinuation, browseNext, browseAll, browseRecursive
+Path: translateBrowsePaths, resolveNodeId
+Read/Write: read, readMulti, write, writeMulti
+Call: call
+Subscriptions: createSubscription, createMonitoredItems, createEventMonitoredItem, deleteMonitoredItems, deleteSubscription, publish, transferSubscriptions, republish
+History: historyReadRaw, historyReadProcessed, historyReadAtTime
+State: isConnected, getConnectionState, reconnect
+Config: getTimeout, getAutoRetry, getBatchSize, getDefaultBrowseMaxDepth, getServerMaxNodesPerRead, getServerMaxNodesPerWrite
+Discovery/Cache: getEndpoints, discoverDataTypes, invalidateCache, flushCache
+
+---
+
+## 5. Type Serialization
+
+TypeSerializer handles bidirectional JSON ↔ OPC UA type conversion for IPC transport.
+
+### Core Types
+
+| Type | JSON |
+|---|---|
+| NodeId | {"ns": 0, "id": 2259, "type": "numeric"} |
+| Variant | {"type": 6, "value": 42, "dimensions": null} |
+| DataValue | {"value": 42, "type": 6, "dimensions": null, "statusCode": 0, "sourceTimestamp": "...", "serverTimestamp": "..."} |
+| QualifiedName | {"ns": 0, "name": "Server"} |
+| LocalizedText | {"locale": "en", "text": "Server"} |
+| ReferenceDescription | {"referenceTypeId": {...}, "isForward": true, "nodeId": {...}, ...} |
+| BrowseNode | {"reference": {...}, "children": [...]} |
+| EndpointDescription | {"endpointUrl": "...", "securityMode": 1, ...} |
+| BuiltinType | int (enum value) |
+| NodeClass | int (enum value) |
+| BrowseDirection | int (enum value) |
+| ConnectionState | string (enum name) |
+| DateTimeImmutable | string (ISO 8601) |
+
+### v3.0.0 DTOs
+
+| DTO | JSON |
+|---|---|
+| SubscriptionResult | {"subscriptionId": 1, "revisedPublishingInterval": 500.0, ...} |
+| MonitoredItemResult | {"statusCode": 0, "monitoredItemId": 100, ...} |
+| CallResult | {"statusCode": 0, "inputArgumentResults": [...], "outputArguments": [...]} |
+| BrowseResultSet | {"references": [...], "continuationPoint": "..."} |
+| PublishResult | {"subscriptionId": 1, "sequenceNumber": 42, ...} |
+| BrowsePathResult | {"statusCode": 0, "targets": [...]} |
+| TransferResult | {"statusCode": 0, "availableSequenceNumbers": [...]} |
+
+Variant dimensions are preserved through serialization roundtrips.
+
+---
+
+## 6. Session Persistence
+
+```php
+// Request 1: open session
+$client = new ManagedClient();
+$client->connect('opc.tcp://localhost:4840');
+$sessionId = $client->getSessionId();
+// Store $sessionId — do NOT disconnect
+
+// Request 2: session is still alive
+$client = new ManagedClient();
+$client->connect('opc.tcp://localhost:4840');
+$value = $client->read('i=2259'); // ~5ms, no handshake
+```
+
+Sessions expire after --timeout seconds of inactivity. The cleanup timer runs every --cleanup-interval seconds.
+
+---
+
+## 7. Project Structure
+
+```
+src/
+├── Client/
+│   ├── ManagedClient.php           # OpcUaClientInterface proxy
+│   └── SocketConnection.php        # Unix socket transport
+├── Daemon/
+│   ├── SessionManagerDaemon.php    # ReactPHP daemon
+│   ├── CommandHandler.php          # Command dispatch + security
+│   ├── Session.php                 # Session wrapper
+│   └── SessionStore.php            # In-memory registry
+├── Serialization/
+│   └── TypeSerializer.php          # JSON ↔ OPC UA types
+└── Exception/
+    ├── DaemonException.php
+    ├── SessionNotFoundException.php
+    └── SerializationException.php
+```
+
+---
+
+## Main Classes
+
+- Gianfriaur\OpcuaSessionManager\Client\ManagedClient — implements OpcUaClientInterface, proxies to daemon
+- Gianfriaur\OpcuaSessionManager\Client\SocketConnection — static send() for Unix socket JSON transport
+- Gianfriaur\OpcuaSessionManager\Daemon\SessionManagerDaemon — ReactPHP daemon with cleanup and signal handling
+- Gianfriaur\OpcuaSessionManager\Daemon\CommandHandler — IPC command processor with 37-method whitelist
+- Gianfriaur\OpcuaSessionManager\Daemon\Session — readonly id, client, endpointUrl, config; mutable lastUsed
+- Gianfriaur\OpcuaSessionManager\Daemon\SessionStore — create, get, remove, touch, getExpired, count, all
+- Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer — serialize/deserialize for all OPC UA types and DTOs
+- Gianfriaur\OpcuaSessionManager\Exception\DaemonException — socket/IPC errors
+- Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException — session not in store
+- Gianfriaur\OpcuaSessionManager\Exception\SerializationException — type conversion errors
+
+## Related Packages
+
+- gianfriaur/opcua-php-client: core OPC UA client library (required dependency)
+- gianfriaur/opcua-laravel-client: Laravel integration (service provider, facade, config)
+- GianfriAur/opcua-test-server-suite: Docker-based OPC UA test servers
+
+## Links
+
+- Repository: https://github.com/GianfriAur/opcua-php-client-session-manager
+- Documentation: https://github.com/GianfriAur/opcua-php-client-session-manager/tree/master/doc
+- Issues: https://github.com/GianfriAur/opcua-php-client-session-manager/issues
+- Packagist: https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager
+- Changelog: https://github.com/GianfriAur/opcua-php-client-session-manager/blob/master/CHANGELOG.md

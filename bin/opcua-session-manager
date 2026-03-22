@@ -3,7 +3,6 @@
 
 declare(strict_types=1);
 
-// Find autoloader
 $autoloadPaths = [
     __DIR__ . '/../vendor/autoload.php',
     __DIR__ . '/../../../autoload.php',
@@ -23,7 +22,10 @@ if (!$autoloaderFound) {
     exit(1);
 }
 
+use Gianfriaur\OpcuaPhpClient\Cache\FileCache;
+use Gianfriaur\OpcuaPhpClient\Cache\InMemoryCache;
 use Gianfriaur\OpcuaSessionManager\Daemon\SessionManagerDaemon;
+use Gianfriaur\OpcuaSessionManager\Logging\StreamLogger;
 
 $defaults = require __DIR__ . '/../config/defaults.php';
 
@@ -35,6 +37,11 @@ $authTokenFile = $defaults['auth_token_file'];
 $maxSessions = $defaults['max_sessions'];
 $socketMode = $defaults['socket_mode'];
 $allowedCertDirs = $defaults['allowed_cert_dirs'];
+$logFile = $defaults['log_file'];
+$logLevel = $defaults['log_level'];
+$cacheDriver = $defaults['cache_driver'];
+$cachePath = $defaults['cache_path'];
+$cacheTtl = $defaults['cache_ttl'];
 $authTokenFromCli = false;
 
 $args = array_slice($argv, 1);
@@ -51,6 +58,11 @@ for ($i = 0; $i < count($args); $i++) {
         '--max-sessions' => $maxSessions = (int) ($args[++$i] ?? $maxSessions),
         '--socket-mode' => $socketMode = intval($args[++$i] ?? '0600', 8),
         '--allowed-cert-dirs' => $allowedCertDirs = explode(',', $args[++$i] ?? ''),
+        '--log-file' => $logFile = $args[++$i] ?? $logFile,
+        '--log-level' => $logLevel = $args[++$i] ?? $logLevel,
+        '--cache-driver' => $cacheDriver = $args[++$i] ?? $cacheDriver,
+        '--cache-path' => $cachePath = $args[++$i] ?? $cachePath,
+        '--cache-ttl' => $cacheTtl = (int) ($args[++$i] ?? $cacheTtl),
         '--help', '-h' => (function () {
             echo "Usage: opcua-session-manager [options]\n";
             echo "\n";
@@ -63,6 +75,11 @@ for ($i = 0; $i < count($args); $i++) {
             echo "  --max-sessions <n>           Maximum concurrent sessions (default: 100)\n";
             echo "  --socket-mode <octal>        Socket file permissions (default: 0600)\n";
             echo "  --allowed-cert-dirs <dirs>   Comma-separated list of allowed certificate directories\n";
+            echo "  --log-file <path>            Log file path (default: stderr)\n";
+            echo "  --log-level <level>          Minimum log level: debug, info, notice, warning, error (default: info)\n";
+            echo "  --cache-driver <driver>      Cache driver: memory, file, none (default: memory)\n";
+            echo "  --cache-path <path>          Cache directory for file driver (required when --cache-driver=file)\n";
+            echo "  --cache-ttl <seconds>        Cache TTL in seconds (default: 300)\n";
             echo "  --help, -h                   Show this help message\n";
             echo "\n";
             echo "Environment variables:\n";
@@ -73,7 +90,6 @@ for ($i = 0; $i < count($args); $i++) {
     };
 }
 
-// Resolve auth token: env var > file > CLI arg
 $envToken = getenv('OPCUA_AUTH_TOKEN');
 if (is_string($envToken) && $envToken !== '') {
     $authToken = $envToken;
@@ -89,11 +105,24 @@ if (is_string($envToken) && $envToken !== '') {
     }
 }
 
-// Warn about CLI token visibility in process list
 if ($authTokenFromCli && $authToken !== null) {
     fwrite(STDERR, "WARNING: --auth-token is visible in the process list (ps/top).\n");
     fwrite(STDERR, "         Use OPCUA_AUTH_TOKEN env var or --auth-token-file instead.\n");
 }
+
+$logger = new StreamLogger($logFile ?? 'php://stderr', $logLevel);
+
+$clientCache = match ($cacheDriver) {
+    'file' => (function () use ($cachePath, $cacheTtl) {
+        if ($cachePath === null) {
+            fwrite(STDERR, "--cache-path is required when --cache-driver=file\n");
+            exit(1);
+        }
+        return new FileCache($cachePath, $cacheTtl);
+    })(),
+    'none' => null,
+    default => new InMemoryCache($cacheTtl),
+};
 
 $daemon = new SessionManagerDaemon(
     socketPath: $socketPath,
@@ -103,5 +132,7 @@ $daemon = new SessionManagerDaemon(
     maxSessions: $maxSessions,
     socketMode: $socketMode,
     allowedCertDirs: $allowedCertDirs,
+    logger: $logger,
+    clientCache: $clientCache,
 );
 $daemon->run();

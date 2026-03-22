@@ -5,9 +5,11 @@
   "license": "MIT",
   "require": {
     "php": "^8.2",
-    "gianfriaur/opcua-php-client": "^2.0",
+    "gianfriaur/opcua-php-client": "^3.0",
     "react/event-loop": "^1.5",
-    "react/socket": "^1.16"
+    "react/socket": "^1.16",
+    "psr/log": "^3.0",
+    "psr/simple-cache": "^3.0"
   },
   "autoload": {
     "psr-4": {

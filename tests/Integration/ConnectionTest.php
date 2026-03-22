@@ -33,7 +33,7 @@ describe('Connection via ManagedClient', function () {
             $refs = $client->browse(NodeId::numeric(0, 85));
             expect($refs)->toBeArray()->not->toBeEmpty();
 
-            $names = array_map(fn($r) => $r->getBrowseName()->getName(), $refs);
+            $names = array_map(fn($r) => $r->browseName->name, $refs);
             expect($names)->toContain('Server');
         } finally {
             TestHelper::safeDisconnect($client);
@@ -45,8 +45,8 @@ describe('Connection via ManagedClient', function () {
         try {
             $client = TestHelper::connectNoSecurity();
             $dataValue = $client->read(NodeId::numeric(0, 2259));
-            expect($dataValue->getStatusCode())->toBe(StatusCode::Good);
-            expect($dataValue->getValue())->toBeInt()->toBe(0);
+            expect($dataValue->statusCode)->toBe(StatusCode::Good);
+            expect($dataValue->value)->toBeInt()->toBe(0);
         } finally {
             TestHelper::safeDisconnect($client);
         }
@@ -122,7 +122,7 @@ describe('Connection via ManagedClient', function () {
             expect($client->getSessionId())->toBeString()->not->toBeEmpty();
 
             $dataValue = $client->read(NodeId::numeric(0, 2259));
-            expect($dataValue->getStatusCode())->toBe(StatusCode::Good);
+            expect($dataValue->statusCode)->toBe(StatusCode::Good);
         } finally {
             TestHelper::safeDisconnect($client);
         }

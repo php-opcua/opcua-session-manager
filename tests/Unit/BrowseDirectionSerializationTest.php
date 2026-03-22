@@ -142,10 +142,10 @@ describe('TypeSerializer — v2.0.0 types', function () {
             $serialized = $this->serializer->serializeBrowseNode($parent);
             $deserialized = $this->serializer->deserializeBrowseNode($serialized);
 
-            expect($deserialized->getBrowseName()->getName())->toBe('Objects');
+            expect($deserialized->reference->browseName->name)->toBe('Objects');
             expect($deserialized->hasChildren())->toBeTrue();
             expect($deserialized->getChildren())->toHaveCount(1);
-            expect($deserialized->getChildren()[0]->getBrowseName()->getName())->toBe('Server');
+            expect($deserialized->getChildren()[0]->reference->browseName->name)->toBe('Server');
             expect($deserialized->getChildren()[0]->hasChildren())->toBeFalse();
         });
 
@@ -191,15 +191,15 @@ describe('TypeSerializer — v2.0.0 types', function () {
 
             $node = $this->serializer->deserializeBrowseNode($data);
 
-            expect($node->getBrowseName()->getName())->toBe('Root');
+            expect($node->reference->browseName->name)->toBe('Root');
             expect($node->getChildren())->toHaveCount(1);
 
             $server = $node->getChildren()[0];
-            expect($server->getBrowseName()->getName())->toBe('Server');
+            expect($server->reference->browseName->name)->toBe('Server');
             expect($server->getChildren())->toHaveCount(1);
 
             $serverStatus = $server->getChildren()[0];
-            expect($serverStatus->getBrowseName()->getName())->toBe('ServerStatus');
+            expect($serverStatus->reference->browseName->name)->toBe('ServerStatus');
             expect($serverStatus->hasChildren())->toBeFalse();
         });
 

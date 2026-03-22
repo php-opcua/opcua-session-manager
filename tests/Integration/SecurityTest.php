@@ -8,7 +8,7 @@ use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
 use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
 use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
 
-// ── Auth daemon management ────────────────────────────────────────────
+// -- Auth daemon management --
 
 const AUTH_SOCKET_PATH = '/tmp/opcua-session-manager-security-test.sock';
 const AUTH_TOKEN = 'test-secret-token-a8b3c9f2e1d0';
@@ -102,7 +102,7 @@ function stopAuthDaemon(): void
     }
 }
 
-// ── Lifecycle ─────────────────────────────────────────────────────────
+// -- Lifecycle --
 
 beforeAll(function () {
     TestHelper::startDaemon();
@@ -114,7 +114,7 @@ afterAll(function () {
     stopAuthDaemon();
 });
 
-// ── Method whitelist ──────────────────────────────────────────────────
+// -- Method whitelist --
 
 describe('Security: Method whitelist (integration)', function () {
 
@@ -252,7 +252,7 @@ describe('Security: Method whitelist (integration)', function () {
 
 })->group('integration');
 
-// ── Credential stripping ──────────────────────────────────────────────
+// -- Credential stripping --
 
 describe('Security: Credential stripping (integration)', function () {
 
@@ -283,7 +283,7 @@ describe('Security: Credential stripping (integration)', function () {
 
 })->group('integration');
 
-// ── Buffer overflow ───────────────────────────────────────────────────
+// -- Buffer overflow --
 
 describe('Security: Buffer overflow protection (integration)', function () {
 
@@ -317,7 +317,7 @@ describe('Security: Buffer overflow protection (integration)', function () {
 
 })->group('integration');
 
-// ── Socket permissions ────────────────────────────────────────────────
+// -- Socket permissions --
 
 describe('Security: Socket permissions (integration)', function () {
 
@@ -328,7 +328,7 @@ describe('Security: Socket permissions (integration)', function () {
 
 })->group('integration');
 
-// ── Auth token ────────────────────────────────────────────────────────
+// -- Auth token --
 
 describe('Security: Auth token (integration)', function () {
 
@@ -371,7 +371,7 @@ describe('Security: Auth token (integration)', function () {
         expect($client->getSessionId())->toBeString()->not->toBeEmpty();
 
         $dataValue = $client->read(NodeId::numeric(0, 2259));
-        expect($dataValue->getValue())->toBeInt();
+        expect($dataValue->value)->toBeInt();
 
         $client->disconnect();
     })->group('integration');
@@ -385,7 +385,7 @@ describe('Security: Auth token (integration)', function () {
 
 })->group('integration');
 
-// ── Max sessions ──────────────────────────────────────────────────────
+// -- Max sessions --
 
 describe('Security: Max sessions limit (integration)', function () {
 
