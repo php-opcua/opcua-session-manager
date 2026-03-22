@@ -72,10 +72,10 @@ describe('Translate browse path via ManagedClient', function () {
             ]);
 
             expect($results)->toBeArray()->toHaveCount(1);
-            expect($results[0]['statusCode'])->toBe(StatusCode::Good);
-            expect($results[0]['targets'])->toBeArray()->not->toBeEmpty();
-            expect($results[0]['targets'][0]['targetId'])->toBeInstanceOf(NodeId::class);
-            expect($results[0]['targets'][0]['targetId']->identifier)->toBe(2253);
+            expect($results[0]->statusCode)->toBe(StatusCode::Good);
+            expect($results[0]->targets)->toBeArray()->not->toBeEmpty();
+            expect($results[0]->targets[0]->targetId)->toBeInstanceOf(NodeId::class);
+            expect($results[0]->targets[0]->targetId->identifier)->toBe(2253);
         } finally {
             TestHelper::safeDisconnect($client);
         }

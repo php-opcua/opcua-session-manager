@@ -20,7 +20,7 @@ describe('Timeout configuration via ManagedClient', function () {
 
             $dv = $client->read(NodeId::numeric(0, 2259));
             expect($dv->statusCode)->toBe(StatusCode::Good);
-            expect($dv->value)->toBe(0);
+            expect($dv->getValue())->toBe(0);
         } finally {
             TestHelper::safeDisconnect($client);
         }

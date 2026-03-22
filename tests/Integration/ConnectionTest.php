@@ -46,7 +46,7 @@ describe('Connection via ManagedClient', function () {
             $client = TestHelper::connectNoSecurity();
             $dataValue = $client->read(NodeId::numeric(0, 2259));
             expect($dataValue->statusCode)->toBe(StatusCode::Good);
-            expect($dataValue->value)->toBeInt()->toBe(0);
+            expect($dataValue->getValue())->toBeInt()->toBe(0);
         } finally {
             TestHelper::safeDisconnect($client);
         }

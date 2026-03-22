@@ -56,7 +56,7 @@ describe('Connection state via ManagedClient', function () {
             expect($client->isConnected())->toBeTrue();
 
             $dv = $client->read(NodeId::numeric(0, 2259));
-            expect($dv->value)->toBe(0);
+            expect($dv->getValue())->toBe(0);
         } finally {
             TestHelper::safeDisconnect($client);
         }

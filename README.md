@@ -283,6 +283,10 @@ OPCUA_AUTH_TOKEN=$(cat /etc/opcua/daemon.token) php bin/opcua-session-manager \
 | [opcua-laravel-client](https://github.com/GianfriAur/opcua-laravel-client) | Laravel integration — service provider, facade, config |
 | [opcua-test-server-suite](https://github.com/GianfriAur/opcua-test-server-suite) | Docker-based OPC UA test servers for integration testing |
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for what's coming next.
+
 ## Contributing
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).

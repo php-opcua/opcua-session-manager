@@ -371,7 +371,7 @@ describe('Security: Auth token (integration)', function () {
         expect($client->getSessionId())->toBeString()->not->toBeEmpty();
 
         $dataValue = $client->read(NodeId::numeric(0, 2259));
-        expect($dataValue->value)->toBeInt();
+        expect($dataValue->getValue())->toBeInt();
 
         $client->disconnect();
     })->group('integration');
