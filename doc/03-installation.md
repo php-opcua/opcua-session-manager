@@ -10,11 +10,11 @@
 ## Composer
 
 ```bash
-composer require gianfriaur/opcua-php-client-session-manager
+composer require php-opcua/opcua-session-manager
 ```
 
 This pulls in:
-- [`gianfriaur/opcua-php-client`](https://github.com/GianfriAur/opcua-php-client) ^3.0 — the core OPC UA client
+- [`php-opcua/opcua-client`](https://github.com/php-opcua/opcua-client) ^4.0 — the core OPC UA client
 - `react/event-loop` ^1.5 — ReactPHP event loop for the daemon
 - `react/socket` ^1.16 — Unix socket server
 - `psr/log` ^3.0 — PSR-3 logging interface (interface-only, zero runtime code)
@@ -23,8 +23,8 @@ This pulls in:
 ## Development Setup
 
 ```bash
-git clone https://github.com/gianfriaur/opcua-php-client-session-manager.git
-cd opcua-php-client-session-manager
+git clone https://github.com/php-opcua/opcua-session-manager.git
+cd opcua-session-manager
 composer install
 ```
 
@@ -33,7 +33,7 @@ composer install
 Integration tests require the OPC UA test server suite:
 
 ```bash
-git clone https://github.com/GianfriAur/opcua-test-server-suite.git
+git clone https://github.com/php-opcua/opcua-test-server-suite.git
 cd opcua-test-server-suite
 docker compose up -d
 ```

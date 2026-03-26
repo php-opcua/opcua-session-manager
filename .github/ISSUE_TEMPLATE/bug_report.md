@@ -29,7 +29,7 @@ What actually happened. Include error messages or exceptions if applicable.
 
 - PHP version:
 - Library version:
-- opcua-php-client version:
+- opcua-client version:
 - OPC UA server: (e.g., open62541, Prosys, Unified Automation, etc.)
 - OS:
 

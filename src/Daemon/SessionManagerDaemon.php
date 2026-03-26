@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Daemon;
+namespace PhpOpcua\SessionManager\Daemon;
 
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;

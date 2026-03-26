@@ -22,10 +22,10 @@ if (!$autoloaderFound) {
     exit(1);
 }
 
-use Gianfriaur\OpcuaPhpClient\Cache\FileCache;
-use Gianfriaur\OpcuaPhpClient\Cache\InMemoryCache;
-use Gianfriaur\OpcuaSessionManager\Daemon\SessionManagerDaemon;
-use Gianfriaur\OpcuaSessionManager\Logging\StreamLogger;
+use PhpOpcua\Client\Cache\FileCache;
+use PhpOpcua\Client\Cache\InMemoryCache;
+use PhpOpcua\SessionManager\Daemon\SessionManagerDaemon;
+use PhpOpcua\SessionManager\Logging\StreamLogger;
 
 $defaults = require __DIR__ . '/../config/defaults.php';
 

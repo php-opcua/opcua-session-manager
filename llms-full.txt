@@ -1,13 +1,13 @@
 # OPC UA PHP Client Session Manager — Full Documentation
 
-> Daemon-based session manager for opcua-php-client. Keeps OPC UA connections alive across PHP requests via a ReactPHP daemon and Unix socket IPC. ManagedClient is a drop-in replacement for Client — same OpcUaClientInterface, persistent sessions.
+> Daemon-based session manager for opcua-client. Keeps OPC UA connections alive across PHP requests via a ReactPHP daemon and Unix socket IPC. ManagedClient is a drop-in replacement for Client — same OpcUaClientInterface, persistent sessions.
 
-Package: gianfriaur/opcua-php-client-session-manager
-Repository: https://github.com/GianfriAur/opcua-php-client-session-manager
-Packagist: https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager
+Package: php-opcua/opcua-session-manager
+Repository: https://github.com/php-opcua/opcua-session-manager
+Packagist: https://packagist.org/packages/php-opcua/opcua-session-manager
 License: MIT
 PHP: >= 8.2
-Dependencies: gianfriaur/opcua-php-client ^3.0, react/event-loop ^1.5, react/socket ^1.16, psr/log ^3.0, psr/simple-cache ^3.0
+Dependencies: php-opcua/opcua-client ^4.0, react/event-loop ^1.5, react/socket ^1.16, psr/log ^3.0, psr/simple-cache ^3.0
 
 ---
 
@@ -31,7 +31,7 @@ Components:
 ### Installation
 
 ```
-composer require gianfriaur/opcua-php-client-session-manager
+composer require php-opcua/opcua-session-manager
 ```
 
 ### Quick Start
@@ -41,7 +41,7 @@ php bin/opcua-session-manager
 ```
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 
 $client = new ManagedClient();
 $client->connect('opc.tcp://localhost:4840');
@@ -374,27 +374,27 @@ src/
 
 ## Main Classes
 
-- Gianfriaur\OpcuaSessionManager\Client\ManagedClient — implements OpcUaClientInterface, proxies to daemon
-- Gianfriaur\OpcuaSessionManager\Client\SocketConnection — static send() for Unix socket JSON transport
-- Gianfriaur\OpcuaSessionManager\Daemon\SessionManagerDaemon — ReactPHP daemon with cleanup and signal handling
-- Gianfriaur\OpcuaSessionManager\Daemon\CommandHandler — IPC command processor with 37-method whitelist
-- Gianfriaur\OpcuaSessionManager\Daemon\Session — readonly id, client, endpointUrl, config; mutable lastUsed
-- Gianfriaur\OpcuaSessionManager\Daemon\SessionStore — create, get, remove, touch, getExpired, count, all
-- Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer — serialize/deserialize for all OPC UA types and DTOs
-- Gianfriaur\OpcuaSessionManager\Exception\DaemonException — socket/IPC errors
-- Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException — session not in store
-- Gianfriaur\OpcuaSessionManager\Exception\SerializationException — type conversion errors
+- PhpOpcua\SessionManager\Client\ManagedClient — implements OpcUaClientInterface, proxies to daemon
+- PhpOpcua\SessionManager\Client\SocketConnection — static send() for Unix socket JSON transport
+- PhpOpcua\SessionManager\Daemon\SessionManagerDaemon — ReactPHP daemon with cleanup and signal handling
+- PhpOpcua\SessionManager\Daemon\CommandHandler — IPC command processor with 37-method whitelist
+- PhpOpcua\SessionManager\Daemon\Session — readonly id, client, endpointUrl, config; mutable lastUsed
+- PhpOpcua\SessionManager\Daemon\SessionStore — create, get, remove, touch, getExpired, count, all
+- PhpOpcua\SessionManager\Serialization\TypeSerializer — serialize/deserialize for all OPC UA types and DTOs
+- PhpOpcua\SessionManager\Exception\DaemonException — socket/IPC errors
+- PhpOpcua\SessionManager\Exception\SessionNotFoundException — session not in store
+- PhpOpcua\SessionManager\Exception\SerializationException — type conversion errors
 
 ## Related Packages
 
-- gianfriaur/opcua-php-client: core OPC UA client library (required dependency)
-- gianfriaur/opcua-laravel-client: Laravel integration (service provider, facade, config)
-- GianfriAur/opcua-test-server-suite: Docker-based OPC UA test servers
+- php-opcua/opcua-client: core OPC UA client library (required dependency)
+- php-opcua/opcua-laravel: Laravel integration (service provider, facade, config)
+- php-opcua/opcua-test-server-suite: Docker-based OPC UA test servers
 
 ## Links
 
-- Repository: https://github.com/GianfriAur/opcua-php-client-session-manager
-- Documentation: https://github.com/GianfriAur/opcua-php-client-session-manager/tree/master/doc
-- Issues: https://github.com/GianfriAur/opcua-php-client-session-manager/issues
-- Packagist: https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager
-- Changelog: https://github.com/GianfriAur/opcua-php-client-session-manager/blob/master/CHANGELOG.md
+- Repository: https://github.com/php-opcua/opcua-session-manager
+- Documentation: https://github.com/php-opcua/opcua-session-manager/tree/master/doc
+- Issues: https://github.com/php-opcua/opcua-session-manager/issues
+- Packagist: https://packagist.org/packages/php-opcua/opcua-session-manager
+- Changelog: https://github.com/php-opcua/opcua-session-manager/blob/master/CHANGELOG.md

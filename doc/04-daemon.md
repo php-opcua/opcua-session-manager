@@ -112,11 +112,12 @@ php bin/opcua-session-manager --log-file /var/log/opcua-daemon.log --log-level d
 
 ### Logging Architecture: Session Manager vs Direct Client
 
-With the direct `Client` from `opcua-php-client`, logging is straightforward — you create a logger, pass it to the client, and all log output goes to your application:
+With the direct `Client` from `opcua-client`, logging is straightforward — you create a logger, pass it to the client, and all log output goes to your application:
 
 ```php
-$client = new Client(logger: $myLogger);
-$client->connect('opc.tcp://localhost:4840');
+$client = ClientBuilder::create()
+    ->logger($myLogger)
+    ->connect('opc.tcp://localhost:4840');
 $client->read('i=2259');
 ```
 
@@ -195,7 +196,7 @@ Output in `/var/log/opcua-daemon.log`:
 
 ### What Gets Cached
 
-The cache is configured on the daemon's `Client` instances, not on `ManagedClient`. The following operations are cached by the underlying `opcua-php-client`:
+The cache is configured on the daemon's `Client` instances, not on `ManagedClient`. The following operations are cached by the underlying `opcua-client`:
 
 - `browse()` and `browseAll()` results
 - `resolveNodeId()` results
@@ -207,9 +208,9 @@ The cache is configured on the daemon's `Client` instances, not on `ManagedClien
 With the direct `Client`, you set the cache on your client instance:
 
 ```php
-$client = new Client();
-$client->setCache(new FileCache('/tmp/opcua-cache'));
-$client->connect('opc.tcp://localhost:4840');
+$client = ClientBuilder::create()
+    ->cache(new FileCache('/tmp/opcua-cache'))
+    ->connect('opc.tcp://localhost:4840');
 ```
 
 With the session manager, the cache is configured **on the daemon**, not on `ManagedClient`:

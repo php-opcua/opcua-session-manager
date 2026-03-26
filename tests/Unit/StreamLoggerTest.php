@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaSessionManager\Logging\StreamLogger;
+use PhpOpcua\SessionManager\Logging\StreamLogger;
 use Psr\Log\LogLevel;
 
 describe('StreamLogger', function () {

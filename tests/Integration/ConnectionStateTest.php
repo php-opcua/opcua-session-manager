@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\SessionManager\Tests\Integration\Helpers\TestHelper;
 
 beforeAll(fn() => TestHelper::startDaemon());
 afterAll(fn() => TestHelper::stopDaemon());

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
-use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
-use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
-use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\SessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\SocketConnection;
+use PhpOpcua\SessionManager\Exception\DaemonException;
+use PhpOpcua\SessionManager\Tests\Integration\Helpers\TestHelper;
 
 // -- Auth daemon management --
 

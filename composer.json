@@ -1,24 +1,51 @@
 {
-  "name": "gianfriaur/opcua-php-client-session-manager",
-  "description": "Session manager daemon for persistent OPC UA connections in PHP",
+  "name": "php-opcua/opcua-session-manager",
+  "description": "Session manager daemon for persistent OPC UA connections in PHP — Unix socket IPC, automatic session recovery, subscription transfer",
+  "homepage": "https://github.com/php-opcua/opcua-session-manager",
+  "support": {
+    "issues": "https://github.com/php-opcua/opcua-session-manager/issues",
+    "source": "https://github.com/php-opcua/opcua-session-manager",
+    "docs": "https://github.com/php-opcua/opcua-session-manager/tree/master/doc"
+  },
   "type": "library",
   "license": "MIT",
+  "authors": [
+    {
+      "name": "Gianfrancesco Aurecchia",
+      "email": "gianfri.aur@gmail.com"
+    }
+  ],
+  "keywords": [
+    "opcua",
+    "opc-ua",
+    "opc ua",
+    "session-manager",
+    "daemon",
+    "ipc",
+    "persistent-connection",
+    "industrial",
+    "iot",
+    "plc",
+    "scada",
+    "automation"
+  ],
   "require": {
     "php": "^8.2",
-    "gianfriaur/opcua-php-client": "^3.0",
+    "php-opcua/opcua-client": "^4.0",
     "react/event-loop": "^1.5",
     "react/socket": "^1.16",
     "psr/log": "^3.0",
-    "psr/simple-cache": "^3.0"
+    "psr/simple-cache": "^3.0",
+    "psr/event-dispatcher": "^1.0"
   },
   "autoload": {
     "psr-4": {
-      "Gianfriaur\\OpcuaSessionManager\\": "src/"
+      "PhpOpcua\\SessionManager\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "Gianfriaur\\OpcuaSessionManager\\Tests\\": "tests/"
+      "PhpOpcua\\SessionManager\\Tests\\": "tests/"
     }
   },
   "bin": [

@@ -1,4 +1,4 @@
-# Contributing to OPC UA PHP Client Session Manager
+# Contributing to OPC UA Session Manager
 
 ## Welcome!
 
@@ -13,13 +13,13 @@ If you have any questions or need help getting started, don't hesitate to open a
 - PHP >= 8.2
 - `ext-openssl`
 - Composer
-- [opcua-test-server-suite](https://github.com/GianfriAur/opcua-test-server-suite) (for integration tests)
+- [opcua-test-server-suite](https://github.com/php-opcua/opcua-test-server-suite) (for integration tests)
 
 ### Installation
 
 ```bash
-git clone https://github.com/gianfriaur/opcua-php-client-session-manager.git
-cd opcua-php-client-session-manager
+git clone https://github.com/php-opcua/opcua-session-manager.git
+cd opcua-session-manager
 composer install
 ```
 
@@ -28,7 +28,7 @@ composer install
 Integration tests require the OPC UA test server suite running locally:
 
 ```bash
-git clone https://github.com/GianfriAur/opcua-test-server-suite.git
+git clone https://github.com/php-opcua/opcua-test-server-suite.git
 cd opcua-test-server-suite
 docker compose up -d
 ```
@@ -89,7 +89,7 @@ tests/
 
 ### Transparent IPC Proxy
 
-`ManagedClient` implements `OpcUaClientInterface` from `gianfriaur/opcua-php-client` and proxies every call to the daemon over a Unix socket. The goal is a drop-in replacement: any code using `Client` should work with `ManagedClient` without changes.
+`ManagedClient` implements `OpcUaClientInterface` from `php-opcua/opcua-client` and proxies every call to the daemon over a Unix socket. The goal is a drop-in replacement: any code using `Client` should work with `ManagedClient` without changes.
 
 ### Security by Default
 
@@ -101,7 +101,7 @@ The daemon (ReactPHP event loop) keeps OPC UA sessions alive in memory across PH
 
 ### Public Readonly DTOs
 
-All service response types use `public readonly` properties matching `opcua-php-client` v3.0.0. `TypeSerializer` handles bidirectional conversion between these DTOs and JSON-safe arrays for IPC transport.
+All service response types use `public readonly` properties matching `opcua-client` v4.0.0. `TypeSerializer` handles bidirectional conversion between these DTOs and JSON-safe arrays for IPC transport.
 
 ## Guidelines
 
@@ -131,7 +131,7 @@ All service response types use `public readonly` properties matching `opcua-php-
 
 ### TypeSerializer Changes
 
-- New DTO types from `opcua-php-client` must have both `serialize*()` and `deserialize*()` methods
+- New DTO types from `opcua-client` must have both `serialize*()` and `deserialize*()` methods
 - Use public readonly properties, not deprecated getters
 - The generic `serialize()` method must handle the new type via `instanceof`
 
@@ -168,4 +168,4 @@ All service response types use `public readonly` properties matching `opcua-php-
 
 ## Reporting Issues
 
-Use the [issue tracker](https://github.com/gianfriaur/opcua-php-client-session-manager/issues) to report bugs, request features, or ask questions.
+Use the [issue tracker](https://github.com/php-opcua/opcua-session-manager/issues) to report bugs, request features, or ask questions.

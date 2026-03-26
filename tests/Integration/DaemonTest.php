@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
-use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
+use PhpOpcua\SessionManager\Client\SocketConnection;
+use PhpOpcua\SessionManager\Tests\Integration\Helpers\TestHelper;
 
 beforeAll(fn() => TestHelper::startDaemon());
 afterAll(fn() => TestHelper::stopDaemon());

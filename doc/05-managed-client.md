@@ -5,7 +5,7 @@
 ## Basic Usage
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 
 $client = new ManagedClient();
 $client->connect('opc.tcp://localhost:4840');
@@ -46,8 +46,8 @@ $client->setDefaultBrowseMaxDepth(20);      // recursive browse depth
 ### Security
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
+use PhpOpcua\Client\Security\SecurityPolicy;
+use PhpOpcua\Client\Security\SecurityMode;
 
 $client->setSecurityPolicy(SecurityPolicy::Basic256Sha256);
 $client->setSecurityMode(SecurityMode::SignAndEncrypt);
@@ -147,9 +147,14 @@ $results = $client->readMulti()
     ->node('ns=2;i=1001')->displayName()
     ->execute();
 
+// Auto-detection (v4) — type inferred automatically
+$status = $client->write('ns=2;i=1001', 42);
+
+// Explicit type (still supported)
 $status = $client->write('ns=2;i=1001', 42, BuiltinType::Int32);
 
 $statuses = $client->writeMulti([
+    ['nodeId' => 'ns=2;i=1001', 'value' => 42],
     ['nodeId' => 'ns=2;i=1001', 'value' => 42, 'type' => BuiltinType::Int32],
 ]);
 ```
@@ -237,12 +242,12 @@ $value = $client->read('i=2259'); // no handshake — instant
 
 ## Error Handling
 
-Daemon errors are re-thrown as the original `opcua-php-client` exception types:
+Daemon errors are re-thrown as the original `opcua-client` exception types:
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Exception\ServiceException;
-use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Exception\ServiceException;
+use PhpOpcua\SessionManager\Exception\DaemonException;
 
 try {
     $value = $client->read('i=2259');

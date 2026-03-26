@@ -1,16 +1,10 @@
 # Roadmap
 
-> **A note on versioning:** We're aware of the rapid major releases in a short time frame. This library is under active, full-time development right now — the goal is to reach a production-stable state as quickly as possible. Breaking changes are being bundled and shipped deliberately to avoid dragging them out across many minor releases. Once the API surface settles, major version bumps will become rare. Thanks for your patience.
-
-## v4.0.0
+## v4.1.0
 
 ### Features
 
-- [ ] Multiple daemon instances — support running multiple daemons on different sockets for workload isolation (e.g. one per OPC UA server)
-- [ ] Session tagging — allow clients to tag sessions with metadata (e.g. user ID, request context) for better observability in `list` output
-- [ ] Config file support — YAML/JSON config file as alternative to CLI flags, with environment variable interpolation
 - [ ] Metrics export — session count, operations/sec, latency percentiles, error rates via OpenTelemetry or Prometheus-compatible format
-- [ ] Symfony integration — Symfony bundle wrapping `ManagedClient` with service container, config, and console commands (`gianfriaur/opcua-symfony-client`)
 - [ ] Windows support — add TCP localhost transport as an alternative to Unix domain sockets for Windows compatibility. `ManagedClient` and `SessionManagerDaemon` would auto-detect the platform and use the appropriate transport. Socket permissions would be replaced by a different auth mechanism on Windows.
 
 ### Refactoring
@@ -18,9 +12,17 @@
 - [ ] Config object — replace the `$config` associative array passed through IPC with a typed `SessionConfig` DTO for type safety
 - [ ] CommandHandler method dispatch — replace the growing `match` block in `deserializeParams()` with a registry pattern for cleaner extensibility
 
+## Completed in v4.0.0
+
+- [x] Trust store support — certificate trust store for managing trusted/rejected certificates
+- [x] Event dispatcher — hook into session lifecycle events (created, expired, closed, error)
+- [x] ClientBuilder pattern — `ClientBuilder::create()->connect()` replaces `new Client()`
+- [x] Write auto-detection — `write($nodeId, $value)` infers the OPC UA type automatically
+- [x] Rebranding — all packages moved from `gianfriaur/*` to `php-opcua/*` organization
+
 ## Won't Do (by design)
 
-### Merge into opcua-php-client
+### Merge into opcua-client
 
 The session manager is intentionally kept as a separate package and will not be merged into the client library. The reasons:
 
@@ -39,4 +41,4 @@ Unix sockets are faster, simpler, and more secure (file permissions) than HTTP o
 
 ---
 
-Have a suggestion? Open an [issue](https://github.com/gianfriaur/opcua-php-client-session-manager/issues) or check the [contributing guide](CONTRIBUTING.md).
+Have a suggestion? Open an [issue](https://github.com/php-opcua/opcua-session-manager/issues) or check the [contributing guide](CONTRIBUTING.md).

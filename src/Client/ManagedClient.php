@@ -2,37 +2,43 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Client;
+namespace PhpOpcua\SessionManager\Client;
 
 use DateTimeImmutable;
-use Gianfriaur\OpcuaPhpClient\Builder\BrowsePathsBuilder;
-use Gianfriaur\OpcuaPhpClient\Builder\MonitoredItemsBuilder;
-use Gianfriaur\OpcuaPhpClient\Builder\ReadMultiBuilder;
-use Gianfriaur\OpcuaPhpClient\Builder\WriteMultiBuilder;
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Exception\ServiceException;
-use Gianfriaur\OpcuaPhpClient\OpcUaClientInterface;
-use Gianfriaur\OpcuaPhpClient\Repository\ExtensionObjectRepository;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseNode;
-use Gianfriaur\OpcuaPhpClient\Types\BrowsePathResult;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseResultSet;
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
-use Gianfriaur\OpcuaPhpClient\Types\CallResult;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaPhpClient\Types\DataValue;
-use Gianfriaur\OpcuaPhpClient\Types\EndpointDescription;
-use Gianfriaur\OpcuaPhpClient\Types\MonitoredItemResult;
-use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\PublishResult;
-use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
-use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
-use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
-use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
+use PhpOpcua\Client\Builder\BrowsePathsBuilder;
+use PhpOpcua\Client\Builder\MonitoredItemsBuilder;
+use PhpOpcua\Client\Builder\ReadMultiBuilder;
+use PhpOpcua\Client\Builder\WriteMultiBuilder;
+use PhpOpcua\Client\Event\NullEventDispatcher;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Exception\ServiceException;
+use PhpOpcua\Client\OpcUaClientInterface;
+use PhpOpcua\Client\Repository\ExtensionObjectRepository;
+use PhpOpcua\Client\Security\SecurityMode;
+use PhpOpcua\Client\Security\SecurityPolicy;
+use PhpOpcua\Client\TrustStore\TrustPolicy;
+use PhpOpcua\Client\TrustStore\TrustStoreInterface;
+use PhpOpcua\Client\Types\BrowseDirection;
+use PhpOpcua\Client\Types\BrowseNode;
+use PhpOpcua\Client\Types\BrowsePathResult;
+use PhpOpcua\Client\Types\BrowseResultSet;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Types\CallResult;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\Client\Types\DataValue;
+use PhpOpcua\Client\Types\EndpointDescription;
+use PhpOpcua\Client\Types\MonitoredItemModifyResult;
+use PhpOpcua\Client\Types\MonitoredItemResult;
+use PhpOpcua\Client\Types\NodeClass;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\PublishResult;
+use PhpOpcua\Client\Types\SetTriggeringResult;
+use PhpOpcua\Client\Types\SubscriptionResult;
+use PhpOpcua\Client\Types\TransferResult;
+use PhpOpcua\Client\Types\Variant;
+use PhpOpcua\SessionManager\Exception\DaemonException;
+use PhpOpcua\SessionManager\Serialization\TypeSerializer;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Psr\SimpleCache\CacheInterface;
@@ -57,6 +63,14 @@ class ManagedClient implements OpcUaClientInterface
     private LoggerInterface $logger;
     private ?CacheInterface $cache = null;
     private ExtensionObjectRepository $extensionObjectRepository;
+    private EventDispatcherInterface $eventDispatcher;
+
+    private ?string $trustStorePath = null;
+    private ?TrustPolicy $trustPolicy = null;
+    private bool $autoAcceptEnabled = false;
+    private bool $autoAcceptForce = false;
+    private bool $autoDetectWriteType = true;
+    private bool $readMetadataCache = false;
 
     /**
      * @param string $socketPath Path to the daemon's Unix socket.
@@ -72,6 +86,7 @@ class ManagedClient implements OpcUaClientInterface
         $this->serializer = new TypeSerializer();
         $this->logger = new NullLogger();
         $this->extensionObjectRepository = new ExtensionObjectRepository();
+        $this->eventDispatcher = new NullEventDispatcher();
     }
 
     /**
@@ -99,6 +114,128 @@ class ManagedClient implements OpcUaClientInterface
     public function getExtensionObjectRepository(): ExtensionObjectRepository
     {
         return $this->extensionObjectRepository;
+    }
+
+    /**
+     * @param EventDispatcherInterface $eventDispatcher
+     * @return self
+     */
+    public function setEventDispatcher(EventDispatcherInterface $eventDispatcher): self
+    {
+        $this->eventDispatcher = $eventDispatcher;
+
+        return $this;
+    }
+
+    /**
+     * @return EventDispatcherInterface
+     */
+    public function getEventDispatcher(): EventDispatcherInterface
+    {
+        return $this->eventDispatcher;
+    }
+
+    /**
+     * @return ?TrustStoreInterface
+     */
+    public function getTrustStore(): ?TrustStoreInterface
+    {
+        return null;
+    }
+
+    /**
+     * @return ?TrustPolicy
+     */
+    public function getTrustPolicy(): ?TrustPolicy
+    {
+        return $this->trustPolicy;
+    }
+
+    /**
+     * @param string $trustStorePath Path to the trust store directory.
+     * @return self
+     */
+    public function setTrustStorePath(string $trustStorePath): self
+    {
+        $this->trustStorePath = $trustStorePath;
+        $this->config['trustStorePath'] = $trustStorePath;
+
+        return $this;
+    }
+
+    /**
+     * @param ?TrustPolicy $policy
+     * @return self
+     */
+    public function setTrustPolicy(?TrustPolicy $policy): self
+    {
+        $this->trustPolicy = $policy;
+        $this->config['trustPolicy'] = $policy?->value;
+
+        return $this;
+    }
+
+    /**
+     * @param bool $enabled
+     * @param bool $force
+     * @return self
+     */
+    public function autoAccept(bool $enabled = true, bool $force = false): self
+    {
+        $this->autoAcceptEnabled = $enabled;
+        $this->autoAcceptForce = $force;
+        $this->config['autoAccept'] = $enabled;
+        $this->config['autoAcceptForce'] = $force;
+
+        return $this;
+    }
+
+    /**
+     * @param string $certDer DER-encoded certificate bytes.
+     * @return void
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
+    public function trustCertificate(string $certDer): void
+    {
+        $this->query('trustCertificate', [base64_encode($certDer)]);
+    }
+
+    /**
+     * @param string $fingerprint SHA-1 fingerprint.
+     * @return void
+     *
+     * @throws ConnectionException
+     * @throws DaemonException
+     */
+    public function untrustCertificate(string $fingerprint): void
+    {
+        $this->query('untrustCertificate', [$fingerprint]);
+    }
+
+    /**
+     * @param bool $enabled
+     * @return self
+     */
+    public function setAutoDetectWriteType(bool $enabled): self
+    {
+        $this->autoDetectWriteType = $enabled;
+        $this->config['autoDetectWriteType'] = $enabled;
+
+        return $this;
+    }
+
+    /**
+     * @param bool $enabled
+     * @return self
+     */
+    public function setReadMetadataCache(bool $enabled): self
+    {
+        $this->readMetadataCache = $enabled;
+        $this->config['readMetadataCache'] = $enabled;
+
+        return $this;
     }
 
     /**
@@ -654,19 +791,21 @@ class ManagedClient implements OpcUaClientInterface
     /**
      * @param NodeId|string $nodeId
      * @param int $attributeId
+     * @param bool $refresh Force a server read even if the result is cached.
      * @return DataValue
      *
      * @throws ConnectionException
      * @throws ServiceException
      * @throws DaemonException
      */
-    public function read(NodeId|string $nodeId, int $attributeId = 13): DataValue
+    public function read(NodeId|string $nodeId, int $attributeId = 13, bool $refresh = false): DataValue
     {
         $nodeId = $this->resolveNodeIdParam($nodeId);
 
         $result = $this->query('read', [
             $this->serializer->serializeNodeId($nodeId),
             $attributeId,
+            $refresh,
         ]);
 
         return $this->serializer->deserializeDataValue($result);
@@ -704,21 +843,21 @@ class ManagedClient implements OpcUaClientInterface
     /**
      * @param NodeId|string $nodeId
      * @param mixed $value
-     * @param BuiltinType $type
+     * @param ?BuiltinType $type The OPC UA built-in type, or null for auto-detection.
      * @return int
      *
      * @throws ConnectionException
      * @throws ServiceException
      * @throws DaemonException
      */
-    public function write(NodeId|string $nodeId, mixed $value, BuiltinType $type): int
+    public function write(NodeId|string $nodeId, mixed $value, ?BuiltinType $type = null): int
     {
         $nodeId = $this->resolveNodeIdParam($nodeId);
 
         return $this->query('write', [
             $this->serializer->serializeNodeId($nodeId),
             $value,
-            $type->value,
+            $type?->value,
         ]);
     }
 
@@ -741,7 +880,7 @@ class ManagedClient implements OpcUaClientInterface
                 $this->resolveNodeIdParam($item['nodeId']),
             ),
             'value' => $item['value'],
-            'type' => $item['type']->value,
+            'type' => isset($item['type']) ? $item['type']->value : null,
             'attributeId' => $item['attributeId'] ?? 13,
         ], $writeItems);
 
@@ -890,6 +1029,43 @@ class ManagedClient implements OpcUaClientInterface
     public function deleteMonitoredItems(int $subscriptionId, array $monitoredItemIds): array
     {
         return $this->query('deleteMonitoredItems', [$subscriptionId, $monitoredItemIds]);
+    }
+
+    /**
+     * @param int $subscriptionId
+     * @param array<array{monitoredItemId: int, samplingInterval?: float, queueSize?: int, clientHandle?: int, discardOldest?: bool}> $itemsToModify
+     * @return MonitoredItemModifyResult[]
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function modifyMonitoredItems(int $subscriptionId, array $itemsToModify): array
+    {
+        $result = $this->query('modifyMonitoredItems', [$subscriptionId, $itemsToModify]);
+
+        return array_map(
+            fn(array $item) => $this->serializer->deserializeMonitoredItemModifyResult($item),
+            $result,
+        );
+    }
+
+    /**
+     * @param int $subscriptionId
+     * @param int $triggeringItemId
+     * @param int[] $linksToAdd
+     * @param int[] $linksToRemove
+     * @return SetTriggeringResult
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function setTriggering(int $subscriptionId, int $triggeringItemId, array $linksToAdd = [], array $linksToRemove = []): SetTriggeringResult
+    {
+        $result = $this->query('setTriggering', [$subscriptionId, $triggeringItemId, $linksToAdd, $linksToRemove]);
+
+        return $this->serializer->deserializeSetTriggeringResult($result);
     }
 
     /**

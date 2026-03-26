@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Client;
+namespace PhpOpcua\SessionManager\Client;
 
-use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
+use PhpOpcua\SessionManager\Exception\DaemonException;
 
 /**
  * Low-level Unix socket transport for sending JSON-encoded IPC commands to the daemon.

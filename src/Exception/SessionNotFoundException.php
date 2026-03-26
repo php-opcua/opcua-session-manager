@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Exception;
+namespace PhpOpcua\SessionManager\Exception;
 
 use RuntimeException;
 

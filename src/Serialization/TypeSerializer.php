@@ -2,31 +2,34 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Serialization;
+namespace PhpOpcua\SessionManager\Serialization;
 
 use DateTimeImmutable;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseNode;
-use Gianfriaur\OpcuaPhpClient\Types\BrowsePathResult;
-use Gianfriaur\OpcuaPhpClient\Types\BrowsePathTarget;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseResultSet;
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
-use Gianfriaur\OpcuaPhpClient\Types\CallResult;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaPhpClient\Types\DataValue;
-use Gianfriaur\OpcuaPhpClient\Types\EndpointDescription;
-use Gianfriaur\OpcuaPhpClient\Types\LocalizedText;
-use Gianfriaur\OpcuaPhpClient\Types\MonitoredItemResult;
-use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\PublishResult;
-use Gianfriaur\OpcuaPhpClient\Types\QualifiedName;
-use Gianfriaur\OpcuaPhpClient\Types\ReferenceDescription;
-use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
-use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
-use Gianfriaur\OpcuaPhpClient\Types\UserTokenPolicy;
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
-use Gianfriaur\OpcuaSessionManager\Exception\SerializationException;
+use PhpOpcua\Client\Types\BrowseDirection;
+use PhpOpcua\Client\Types\BrowseNode;
+use PhpOpcua\Client\Types\BrowsePathResult;
+use PhpOpcua\Client\Types\BrowsePathTarget;
+use PhpOpcua\Client\Types\BrowseResultSet;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Types\CallResult;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\Client\Types\DataValue;
+use PhpOpcua\Client\Types\EndpointDescription;
+use PhpOpcua\Client\Types\LocalizedText;
+use PhpOpcua\Client\Types\MonitoredItemResult;
+use PhpOpcua\Client\Types\NodeClass;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\PublishResult;
+use PhpOpcua\Client\Types\QualifiedName;
+use PhpOpcua\Client\Types\ReferenceDescription;
+use PhpOpcua\Client\Types\SubscriptionResult;
+use PhpOpcua\Client\Types\TransferResult;
+use PhpOpcua\Client\Types\UserTokenPolicy;
+use PhpOpcua\Client\Types\Variant;
+use PhpOpcua\Client\Types\ExtensionObject;
+use PhpOpcua\Client\Types\MonitoredItemModifyResult;
+use PhpOpcua\Client\Types\SetTriggeringResult;
+use PhpOpcua\SessionManager\Exception\SerializationException;
 
 /**
  * Bidirectional JSON serialization and deserialization for all OPC UA types and DTOs transported over IPC.
@@ -125,6 +128,18 @@ class TypeSerializer
 
         if ($value instanceof TransferResult) {
             return $this->serializeTransferResult($value);
+        }
+
+        if ($value instanceof MonitoredItemModifyResult) {
+            return $this->serializeMonitoredItemModifyResult($value);
+        }
+
+        if ($value instanceof SetTriggeringResult) {
+            return $this->serializeSetTriggeringResult($value);
+        }
+
+        if ($value instanceof ExtensionObject) {
+            return $this->serializeExtensionObject($value);
         }
 
         if (is_array($value)) {
@@ -308,6 +323,34 @@ class TypeSerializer
         ];
     }
 
+    public function serializeMonitoredItemModifyResult(MonitoredItemModifyResult $result): array
+    {
+        return [
+            'statusCode' => $result->statusCode,
+            'revisedSamplingInterval' => $result->revisedSamplingInterval,
+            'revisedQueueSize' => $result->revisedQueueSize,
+        ];
+    }
+
+    public function serializeSetTriggeringResult(SetTriggeringResult $result): array
+    {
+        return [
+            'statusCode' => $result->statusCode,
+            'addResults' => $result->addResults,
+            'removeResults' => $result->removeResults,
+        ];
+    }
+
+    public function serializeExtensionObject(ExtensionObject $obj): array
+    {
+        return [
+            'typeId' => $this->serializeNodeId($obj->typeId),
+            'encoding' => $obj->encoding,
+            'body' => $obj->body !== null ? base64_encode($obj->body) : null,
+            'value' => $obj->isDecoded() ? $this->serialize($obj->value) : null,
+        ];
+    }
+
     public function deserializeNodeId(array $data): NodeId
     {
         $type = $data['type'] ?? NodeId::TYPE_NUMERIC;
@@ -427,8 +470,12 @@ class TypeSerializer
         };
     }
 
-    public function deserializeBuiltinType(int $value): BuiltinType
+    public function deserializeBuiltinType(?int $value): ?BuiltinType
     {
+        if ($value === null) {
+            return null;
+        }
+
         return BuiltinType::from($value);
     }
 
@@ -513,6 +560,34 @@ class TypeSerializer
         );
     }
 
+    public function deserializeMonitoredItemModifyResult(array $data): MonitoredItemModifyResult
+    {
+        return new MonitoredItemModifyResult(
+            (int)$data['statusCode'],
+            (float)$data['revisedSamplingInterval'],
+            (int)$data['revisedQueueSize'],
+        );
+    }
+
+    public function deserializeSetTriggeringResult(array $data): SetTriggeringResult
+    {
+        return new SetTriggeringResult(
+            (int)$data['statusCode'],
+            array_map('intval', $data['addResults'] ?? []),
+            array_map('intval', $data['removeResults'] ?? []),
+        );
+    }
+
+    public function deserializeExtensionObject(array $data): ExtensionObject
+    {
+        return new ExtensionObject(
+            $this->deserializeNodeId($data['typeId']),
+            (int)($data['encoding'] ?? 0),
+            isset($data['body']) ? base64_decode($data['body']) : null,
+            $data['value'] ?? null,
+        );
+    }
+
     private function deserializeVariantValue(BuiltinType $type, mixed $value): mixed
     {
         if ($value === null) {
@@ -524,6 +599,7 @@ class TypeSerializer
             BuiltinType::NodeId => is_array($value) ? $this->deserializeNodeId($value) : $value,
             BuiltinType::QualifiedName => is_array($value) ? $this->deserializeQualifiedName($value) : $value,
             BuiltinType::LocalizedText => is_array($value) ? $this->deserializeLocalizedText($value) : $value,
+            BuiltinType::ExtensionObject => is_array($value) && isset($value['typeId']) ? $this->deserializeExtensionObject($value) : $value,
             default => $value,
         };
     }

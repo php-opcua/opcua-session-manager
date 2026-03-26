@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers;
+namespace PhpOpcua\SessionManager\Tests\Integration\Helpers;
 
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\ReferenceDescription;
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
-use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\ReferenceDescription;
+use PhpOpcua\SessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\SocketConnection;
 use RuntimeException;
 use Throwable;
 
 final class TestHelper
 {
-    // ── Endpoint URLs (same as opcua-php-client) ────────────────────────
+    // ── Endpoint URLs (same as opcua-client) ────────────────────────
     public const ENDPOINT_NO_SECURITY = 'opc.tcp://localhost:4840/UA/TestServer';
     public const ENDPOINT_USERPASS = 'opc.tcp://localhost:4841/UA/TestServer';
     public const ENDPOINT_CERTIFICATE = 'opc.tcp://localhost:4842/UA/TestServer';
@@ -29,7 +29,7 @@ final class TestHelper
     // ── Certificate paths ───────────────────────────────────────────────
     public static function getCertsDir(): string
     {
-        $dir = getenv('OPCUA_CERTS_DIR') ?: __DIR__ . '/../../../../opcua-test-server-suite/certs';
+        $dir = getenv('OPCUA_CERTS_DIR') ?: __DIR__ . '/../../../../opcua-test-suite/certs';
 
         return realpath($dir) ?: $dir;
     }

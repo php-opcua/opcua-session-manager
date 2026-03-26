@@ -2,7 +2,7 @@
 
 ## What Is This?
 
-`gianfriaur/opcua-php-client-session-manager` is a daemon-based session manager for [`opcua-php-client`](https://github.com/GianfriAur/opcua-php-client). It keeps OPC UA connections alive across PHP requests by running a long-lived [ReactPHP](https://reactphp.org/) process that holds sessions in memory, communicating with PHP applications via a Unix socket IPC protocol.
+`php-opcua/opcua-session-manager` is a daemon-based session manager for [`opcua-client`](https://github.com/php-opcua/opcua-client). It keeps OPC UA connections alive across PHP requests by running a long-lived [ReactPHP](https://reactphp.org/) process that holds sessions in memory, communicating with PHP applications via a Unix socket IPC protocol.
 
 ## Why Do You Need It?
 
@@ -18,7 +18,7 @@ PHP's request/response model destroys all state — including network connection
 ## Installation
 
 ```bash
-composer require gianfriaur/opcua-php-client-session-manager
+composer require php-opcua/opcua-session-manager
 ```
 
 ## Quick Start
@@ -32,7 +32,7 @@ php bin/opcua-session-manager
 ### 2. Use ManagedClient
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 
 $client = new ManagedClient();
 $client->connect('opc.tcp://localhost:4840');
@@ -75,7 +75,7 @@ SessionManagerDaemon (ReactPHP)
     ├── TypeSerializer (JSON ↔ OPC UA types)
     │
     ▼
-OPC UA Client (opcua-php-client v3.0.0)
+OPC UA Client (opcua-client v4.0.0)
     │ TCP binary protocol
     ▼
 OPC UA Server
@@ -99,7 +99,7 @@ OPC UA Server
 
 | Package | Description |
 |---------|-------------|
-| [opcua-php-client](https://github.com/GianfriAur/opcua-php-client) | Pure PHP OPC UA client — the core protocol implementation |
-| [opcua-php-client-session-manager](https://github.com/GianfriAur/opcua-php-client-session-manager) | Session persistence daemon (this package) |
-| [opcua-laravel-client](https://github.com/GianfriAur/opcua-laravel-client) | Laravel integration — service provider, facade, config |
-| [opcua-test-server-suite](https://github.com/GianfriAur/opcua-test-server-suite) | Docker-based OPC UA test servers |
+| [opcua-client](https://github.com/php-opcua/opcua-client) | Pure PHP OPC UA client — the core protocol implementation |
+| [opcua-session-manager](https://github.com/php-opcua/opcua-session-manager) | Session persistence daemon (this package) |
+| [opcua-laravel-client](https://github.com/php-opcua/opcua-laravel-client) | Laravel integration — service provider, facade, config |
+| [opcua-test-server-suite](https://github.com/php-opcua/opcua-test-server-suite) | Docker-based OPC UA test servers |

@@ -5,7 +5,7 @@
 Integration tests require the OPC UA test server suite running locally:
 
 ```bash
-git clone https://github.com/GianfriAur/opcua-test-server-suite.git
+git clone https://github.com/php-opcua/opcua-test-server-suite.git
 cd opcua-test-server-suite
 docker compose up -d
 ```
@@ -52,7 +52,7 @@ Without the exclusion, reported coverage would be ~82% instead of the actual ~99
 
 | File | Tests | Covers |
 |------|-------|--------|
-| `TypeSerializerTest.php` | 40+ | All type serialization/deserialization roundtrips including v3.0.0 DTOs |
+| `TypeSerializerTest.php` | 40+ | All type serialization/deserialization roundtrips including v4.0.0 DTOs |
 | `SessionStoreTest.php` | 8 | Session CRUD, expiration, touching |
 | `ManagedClientConfigTest.php` | 17 | Configuration setters/getters, logger, cache, extension object repository |
 | `CommandHandlerSecurityTest.php` | 18 | Method whitelist, setter rejection, credential stripping, max sessions, cert validation |
@@ -83,7 +83,7 @@ Without the exclusion, reported coverage would be ~82% instead of the actual ~99
 The `TestHelper` class manages daemon lifecycle and provides client utilities:
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
+use PhpOpcua\SessionManager\Tests\Integration\Helpers\TestHelper;
 
 // Daemon lifecycle
 TestHelper::startDaemon();      // starts daemon on test socket

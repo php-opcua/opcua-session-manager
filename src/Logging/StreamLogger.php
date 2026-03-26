@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Logging;
+namespace PhpOpcua\SessionManager\Logging;
 
 use Psr\Log\AbstractLogger;
 use Psr\Log\LogLevel;

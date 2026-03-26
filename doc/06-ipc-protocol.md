@@ -163,7 +163,7 @@ Execute an OPC UA operation on an existing session.
 You can interact with the daemon directly using `SocketConnection`:
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
+use PhpOpcua\SessionManager\Client\SocketConnection;
 
 $response = SocketConnection::send('/tmp/opcua-session-manager.sock', [
     'command' => 'ping',

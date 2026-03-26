@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Repository\ExtensionObjectRepository;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\Client\Repository\ExtensionObjectRepository;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 

@@ -54,7 +54,7 @@ The long-running process. Listens on a Unix socket, manages sessions, handles cl
 
 ### ManagedClient
 
-Drop-in replacement for `opcua-php-client`'s `Client`. Implements the same `OpcUaClientInterface`. Translates every method call into a JSON message sent to the daemon via `SocketConnection`.
+Drop-in replacement for `opcua-client`'s `Client`. Implements the same `OpcUaClientInterface`. Translates every method call into a JSON message sent to the daemon via `SocketConnection`.
 
 ### CommandHandler
 
@@ -62,7 +62,7 @@ Processes IPC commands inside the daemon. Enforces a method whitelist (37 allowe
 
 ### TypeSerializer
 
-Bidirectional JSON serialization for all OPC UA types and v3.0.0 DTOs. Handles `NodeId`, `DataValue`, `Variant`, `ReferenceDescription`, `SubscriptionResult`, `CallResult`, `BrowseResultSet`, `PublishResult`, `BrowsePathResult`, `TransferResult`, `MonitoredItemResult`, and all scalar/array types.
+Bidirectional JSON serialization for all OPC UA types and v4.0.0 DTOs. Handles `NodeId`, `DataValue`, `Variant`, `ReferenceDescription`, `SubscriptionResult`, `CallResult`, `BrowseResultSet`, `PublishResult`, `BrowsePathResult`, `TransferResult`, `MonitoredItemResult`, and all scalar/array types.
 
 ### SessionStore
 
@@ -73,4 +73,4 @@ In-memory registry of active sessions with expiration support.
 - PHP >= 8.2
 - `ext-openssl`
 - `ext-pcntl` (recommended, for signal handling)
-- [`gianfriaur/opcua-php-client`](https://github.com/GianfriAur/opcua-php-client) ^3.0
+- [`php-opcua/opcua-client`](https://github.com/php-opcua/opcua-client) ^4.0

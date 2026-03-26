@@ -9,16 +9,16 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/GianfriAur/opcua-php-client-session-manager/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/GianfriAur/opcua-php-client-session-manager/tests.yml?branch=master&label=tests&style=flat-square" alt="Tests"></a>
-  <a href="https://codecov.io/gh/GianfriAur/opcua-php-client-session-manager"><img src="https://img.shields.io/codecov/c/github/GianfriAur/opcua-php-client-session-manager?style=flat-square&logo=codecov" alt="Coverage"></a>
-  <a href="https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager"><img src="https://img.shields.io/packagist/v/gianfriaur/opcua-php-client-session-manager?style=flat-square&label=packagist" alt="Latest Version"></a>
-  <a href="https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager"><img src="https://img.shields.io/packagist/php-v/gianfriaur/opcua-php-client-session-manager?style=flat-square" alt="PHP Version"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/GianfriAur/opcua-php-client-session-manager?style=flat-square" alt="License"></a>
+  <a href="https://github.com/php-opcua/opcua-session-manager/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/php-opcua/opcua-session-manager/tests.yml?branch=master&label=tests&style=flat-square" alt="Tests"></a>
+  <a href="https://codecov.io/gh/php-opcua/opcua-session-manager"><img src="https://img.shields.io/codecov/c/github/php-opcua/opcua-session-manager?style=flat-square&logo=codecov" alt="Coverage"></a>
+  <a href="https://packagist.org/packages/php-opcua/opcua-session-manager"><img src="https://img.shields.io/packagist/v/php-opcua/opcua-session-manager?style=flat-square&label=packagist" alt="Latest Version"></a>
+  <a href="https://packagist.org/packages/php-opcua/opcua-session-manager"><img src="https://img.shields.io/packagist/php-v/php-opcua/opcua-session-manager?style=flat-square" alt="PHP Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/php-opcua/opcua-session-manager?style=flat-square" alt="License"></a>
 </p>
 
 ---
 
-Keep OPC UA sessions alive across PHP requests. A daemon-based session manager for [`opcua-php-client`](https://github.com/GianfriAur/opcua-php-client) that eliminates the 50–200ms connection handshake overhead on every HTTP request.
+Keep OPC UA sessions alive across PHP requests. A daemon-based session manager for [`opcua-client`](https://github.com/php-opcua/opcua-client) that eliminates the 50–200ms connection handshake overhead on every HTTP request.
 
 PHP's request/response model destroys all state — including network connections — at the end of every request. OPC UA requires a 5-step handshake (TCP → Hello/Ack → OpenSecureChannel → CreateSession → ActivateSession) that must be repeated every single time. This package solves the problem with a long-running [ReactPHP](https://reactphp.org/) daemon that holds sessions in memory, communicating with PHP applications via a lightweight Unix socket IPC protocol.
 
@@ -36,7 +36,7 @@ PHP's request/response model destroys all state — including network connection
 ## Quick Start
 
 ```bash
-composer require gianfriaur/opcua-php-client-session-manager
+composer require php-opcua/opcua-session-manager
 ```
 
 ### 1. Start the daemon
@@ -48,7 +48,7 @@ php bin/opcua-session-manager
 ### 2. Use ManagedClient in your PHP code
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 
 $client = new ManagedClient();
 $client->connect('opc.tcp://localhost:4840');
@@ -102,8 +102,11 @@ $results = $client->readMulti()
 ### Write to a PLC
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
+// Auto-detection (v4) — type inferred automatically
+$client->write('ns=2;i=1001', 42);
 
+// Explicit type (still supported)
+use PhpOpcua\Client\Types\BuiltinType;
 $client->write('ns=2;i=1001', 42, BuiltinType::Int32);
 ```
 
@@ -125,8 +128,8 @@ foreach ($response->notifications as $notif) {
 ### Secure connection with authentication
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
+use PhpOpcua\Client\Security\SecurityPolicy;
+use PhpOpcua\Client\Security\SecurityMode;
 
 $client = new ManagedClient(
     socketPath: '/var/run/opcua-session-manager.sock',
@@ -272,7 +275,7 @@ OPCUA_AUTH_TOKEN=$(cat /etc/opcua/daemon.token) php bin/opcua-session-manager \
 ./vendor/bin/pest tests/Integration/ --group=integration   # integration only
 ```
 
-340+ tests (unit + integration) covering browse, read/write, subscriptions, method calls, path resolution, connection state, security, type serialization, session persistence, session recovery, and all v3.0.0 DTOs.
+340+ tests (unit + integration) covering browse, read/write, subscriptions, method calls, path resolution, connection state, security, type serialization, session persistence, session recovery, and all v4.0.0 DTOs.
 
 > **Note on coverage:** `SessionManagerDaemon` is excluded from coverage reports because it runs as a separate long-lived process (ReactPHP event loop). PHP coverage tools (pcov, xdebug) only instrument the test runner process — they cannot track code executing inside a subprocess started via `proc_open()`. The daemon is fully tested by the integration suite, which starts a real daemon, sends IPC commands, and verifies responses. This is a known limitation shared by other daemon-based PHP packages (Laravel Horizon, Symfony Messenger, RoadRunner workers).
 
@@ -280,10 +283,10 @@ OPCUA_AUTH_TOKEN=$(cat /etc/opcua/daemon.token) php bin/opcua-session-manager \
 
 | Package | Description |
 |---------|-------------|
-| [opcua-php-client](https://github.com/GianfriAur/opcua-php-client) | Pure PHP OPC UA client — the core protocol implementation |
-| [opcua-php-client-session-manager](https://github.com/GianfriAur/opcua-php-client-session-manager) | Session persistence daemon (this package) |
-| [opcua-laravel-client](https://github.com/GianfriAur/opcua-laravel-client) | Laravel integration — service provider, facade, config |
-| [opcua-test-server-suite](https://github.com/GianfriAur/opcua-test-server-suite) | Docker-based OPC UA test servers for integration testing |
+| [opcua-client](https://github.com/php-opcua/opcua-client) | Pure PHP OPC UA client — the core protocol implementation |
+| [opcua-session-manager](https://github.com/php-opcua/opcua-session-manager) | Session persistence daemon (this package) |
+| [opcua-laravel-client](https://github.com/php-opcua/opcua-laravel-client) | Laravel integration — service provider, facade, config |
+| [opcua-test-server-suite](https://github.com/php-opcua/opcua-test-server-suite) | Docker-based OPC UA test servers for integration testing |
 
 ## Roadmap
 

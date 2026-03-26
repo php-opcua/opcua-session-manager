@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Daemon;
+namespace PhpOpcua\SessionManager\Daemon;
 
-use Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException;
+use PhpOpcua\SessionManager\Exception\SessionNotFoundException;
 
 /**
  * In-memory registry for active OPC UA sessions with expiration support.

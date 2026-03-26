@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Client;
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Types\DataValue;
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
-use Gianfriaur\OpcuaSessionManager\Daemon\CommandHandler;
-use Gianfriaur\OpcuaSessionManager\Daemon\Session;
-use Gianfriaur\OpcuaSessionManager\Daemon\SessionStore;
+use PhpOpcua\Client\Client;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Types\DataValue;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Types\Variant;
+use PhpOpcua\SessionManager\Daemon\CommandHandler;
+use PhpOpcua\SessionManager\Daemon\Session;
+use PhpOpcua\SessionManager\Daemon\SessionStore;
 
 describe('CommandHandler Extended', function () {
 

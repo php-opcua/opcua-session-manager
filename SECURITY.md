@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 3.x     | Yes       |
+| 4.x     | Yes       |
+| 3.x     | No        |
 | 2.x     | No        |
 | 1.x     | No        |
 
@@ -23,11 +24,11 @@ You should receive an acknowledgment within 48 hours. From there, we'll work tog
 
 ## Scope
 
-This policy covers the `gianfriaur/opcua-php-client-session-manager` library itself. For vulnerabilities in dependencies or related packages, please report them to the respective maintainers:
+This policy covers the `php-opcua/opcua-session-manager` library itself. For vulnerabilities in dependencies or related packages, please report them to the respective maintainers:
 
-- [opcua-php-client](https://github.com/GianfriAur/opcua-php-client)
-- [opcua-laravel-client](https://github.com/GianfriAur/opcua-laravel-client)
-- [opcua-test-server-suite](https://github.com/GianfriAur/opcua-test-server-suite)
+- [opcua-client](https://github.com/php-opcua/opcua-client)
+- [opcua-laravel-client](https://github.com/php-opcua/opcua-laravel-client)
+- [opcua-test-server-suite](https://github.com/php-opcua/opcua-test-server-suite)
 
 ## Security Considerations
 

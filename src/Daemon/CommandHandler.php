@@ -2,21 +2,24 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Daemon;
+namespace PhpOpcua\SessionManager\Daemon;
 
 use DateTimeImmutable;
-use Gianfriaur\OpcuaPhpClient\Client;
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
-use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
-use Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException;
-use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
+use PhpOpcua\Client\ClientBuilder;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Security\SecurityMode;
+use PhpOpcua\Client\Security\SecurityPolicy;
+use PhpOpcua\Client\TrustStore\FileTrustStore;
+use PhpOpcua\Client\TrustStore\TrustPolicy;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Types\BrowseDirection;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\Client\Types\NodeClass;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\SubscriptionResult;
+use PhpOpcua\Client\Types\TransferResult;
+use PhpOpcua\SessionManager\Exception\SessionNotFoundException;
+use PhpOpcua\SessionManager\Serialization\TypeSerializer;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -65,6 +68,14 @@ class CommandHandler
         'discoverDataTypes',
         'invalidateCache',
         'flushCache',
+        'modifyMonitoredItems',
+        'setTriggering',
+        'trustCertificate',
+        'untrustCertificate',
+        'getTrustStore',
+        'getTrustPolicy',
+        'getEventDispatcher',
+        'getLogger',
     ];
 
     private const MAX_ERROR_MESSAGE_LENGTH = 500;
@@ -136,49 +147,66 @@ class CommandHandler
 
         $this->validateCertPaths($config);
 
-        $client = new Client(logger: $this->clientLogger);
+        $builder = ClientBuilder::create(logger: $this->clientLogger);
 
         if ($this->clientCache !== null) {
-            $client->setCache($this->clientCache);
+            $builder->setCache($this->clientCache);
         }
 
         if (isset($config['opcuaTimeout'])) {
-            $client->setTimeout((float)$config['opcuaTimeout']);
+            $builder->setTimeout((float)$config['opcuaTimeout']);
         }
 
         if (isset($config['autoRetry'])) {
-            $client->setAutoRetry((int)$config['autoRetry']);
+            $builder->setAutoRetry((int)$config['autoRetry']);
         }
 
         if (isset($config['batchSize'])) {
-            $client->setBatchSize((int)$config['batchSize']);
+            $builder->setBatchSize((int)$config['batchSize']);
         }
 
         if (isset($config['defaultBrowseMaxDepth'])) {
-            $client->setDefaultBrowseMaxDepth((int)$config['defaultBrowseMaxDepth']);
+            $builder->setDefaultBrowseMaxDepth((int)$config['defaultBrowseMaxDepth']);
         }
 
         if (isset($config['securityPolicy'])) {
-            $client->setSecurityPolicy(SecurityPolicy::from($config['securityPolicy']));
+            $builder->setSecurityPolicy(SecurityPolicy::from($config['securityPolicy']));
         }
         if (isset($config['securityMode'])) {
-            $client->setSecurityMode(SecurityMode::from((int)$config['securityMode']));
+            $builder->setSecurityMode(SecurityMode::from((int)$config['securityMode']));
         }
         if (isset($config['username'], $config['password'])) {
-            $client->setUserCredentials($config['username'], $config['password']);
+            $builder->setUserCredentials($config['username'], $config['password']);
         }
         if (isset($config['clientCertPath'], $config['clientKeyPath'])) {
-            $client->setClientCertificate(
+            $builder->setClientCertificate(
                 $config['clientCertPath'],
                 $config['clientKeyPath'],
                 $config['caCertPath'] ?? null,
             );
         }
         if (isset($config['userCertPath'], $config['userKeyPath'])) {
-            $client->setUserCertificate($config['userCertPath'], $config['userKeyPath']);
+            $builder->setUserCertificate($config['userCertPath'], $config['userKeyPath']);
         }
 
-        $client->connect($endpointUrl);
+        if (isset($config['trustStorePath'])) {
+            $builder->setTrustStore(new FileTrustStore($config['trustStorePath']));
+        }
+        if (isset($config['trustPolicy'])) {
+            $builder->setTrustPolicy(TrustPolicy::from($config['trustPolicy']));
+        }
+        if (isset($config['autoAccept'])) {
+            $builder->autoAccept((bool)$config['autoAccept'], (bool)($config['autoAcceptForce'] ?? false));
+        }
+
+        if (isset($config['autoDetectWriteType'])) {
+            $builder->setAutoDetectWriteType((bool)$config['autoDetectWriteType']);
+        }
+        if (isset($config['readMetadataCache'])) {
+            $builder->setReadMetadataCache((bool)$config['readMetadataCache']);
+        }
+
+        $client = $builder->connect($endpointUrl);
 
         $sessionId = bin2hex(random_bytes(16));
         $sanitizedConfig = $this->sanitizeConfig($config);
@@ -499,6 +527,7 @@ class CommandHandler
             'read' => [
                 $this->serializer->deserializeNodeId($params[0]),
                 (int)($params[1] ?? 13),
+                (bool)($params[2] ?? false),
             ],
             'readMulti' => [
                 array_map(fn(array $item) => [
@@ -509,13 +538,13 @@ class CommandHandler
             'write' => [
                 $this->serializer->deserializeNodeId($params[0]),
                 $params[1],
-                $this->serializer->deserializeBuiltinType((int)$params[2]),
+                isset($params[2]) ? $this->serializer->deserializeBuiltinType((int)$params[2]) : null,
             ],
             'writeMulti' => [
                 array_map(fn(array $item) => [
                     'nodeId' => $this->serializer->deserializeNodeId($item['nodeId']),
                     'value' => $item['value'],
-                    'type' => $this->serializer->deserializeBuiltinType((int)$item['type']),
+                    'type' => isset($item['type']) ? $this->serializer->deserializeBuiltinType((int)$item['type']) : null,
                     'attributeId' => $item['attributeId'] ?? 13,
                 ], $params[0]),
             ],
@@ -592,10 +621,33 @@ class CommandHandler
             'invalidateCache' => [
                 $this->serializer->deserializeNodeId($params[0]),
             ],
+            'modifyMonitoredItems' => [
+                (int)$params[0],
+                array_map(fn(array $item) => [
+                    'monitoredItemId' => (int)$item['monitoredItemId'],
+                    'samplingInterval' => isset($item['samplingInterval']) ? (float)$item['samplingInterval'] : null,
+                    'queueSize' => isset($item['queueSize']) ? (int)$item['queueSize'] : null,
+                    'clientHandle' => isset($item['clientHandle']) ? (int)$item['clientHandle'] : null,
+                    'discardOldest' => isset($item['discardOldest']) ? (bool)$item['discardOldest'] : null,
+                ], $params[1]),
+            ],
+            'setTriggering' => [
+                (int)$params[0],
+                (int)$params[1],
+                array_map('intval', $params[2] ?? []),
+                array_map('intval', $params[3] ?? []),
+            ],
+            'trustCertificate' => [
+                (string)$params[0],
+            ],
+            'untrustCertificate' => [
+                (string)$params[0],
+            ],
             'isConnected', 'getConnectionState', 'reconnect',
             'getTimeout', 'getAutoRetry', 'getBatchSize',
             'getDefaultBrowseMaxDepth', 'getServerMaxNodesPerRead',
-            'getServerMaxNodesPerWrite', 'flushCache' => [],
+            'getServerMaxNodesPerWrite', 'flushCache',
+            'getTrustStore', 'getTrustPolicy', 'getEventDispatcher', 'getLogger' => [],
             default => throw new InvalidArgumentException("Unsupported method: {$method}"),
         };
     }

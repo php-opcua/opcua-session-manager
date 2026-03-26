@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
-use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
+use PhpOpcua\SessionManager\Client\SocketConnection;
+use PhpOpcua\SessionManager\Exception\DaemonException;
 
 function createFakeServer(bool $respond, string $response = '', int $delayMs = 0): array
 {

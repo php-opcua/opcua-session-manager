@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Client;
-use Gianfriaur\OpcuaSessionManager\Daemon\Session;
-use Gianfriaur\OpcuaSessionManager\Daemon\SessionStore;
-use Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException;
+use PhpOpcua\Client\Client;
+use PhpOpcua\SessionManager\Daemon\Session;
+use PhpOpcua\SessionManager\Daemon\SessionStore;
+use PhpOpcua\SessionManager\Exception\SessionNotFoundException;
 
 describe('SessionStore', function () {
 

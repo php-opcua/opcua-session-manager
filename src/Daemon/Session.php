@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Gianfriaur\OpcuaSessionManager\Daemon;
+namespace PhpOpcua\SessionManager\Daemon;
 
-use Gianfriaur\OpcuaPhpClient\Client;
+use PhpOpcua\Client\Client;
 
 /**
  * Session object holding an OPC UA Client, its endpoint URL, configuration, last-used timestamp, and tracked subscription IDs.

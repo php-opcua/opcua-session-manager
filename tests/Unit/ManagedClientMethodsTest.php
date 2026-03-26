@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
-use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Security\SecurityMode;
+use PhpOpcua\Client\Security\SecurityPolicy;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\SessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Exception\DaemonException;
 
 describe('ManagedClient Methods', function () {
 
@@ -20,7 +20,7 @@ describe('ManagedClient Methods', function () {
 
         it('throws ConnectionException on write when not connected', function () {
             $client = new ManagedClient();
-            expect(fn() => $client->write('i=2259', 42, \Gianfriaur\OpcuaPhpClient\Types\BuiltinType::Int32))
+            expect(fn() => $client->write('i=2259', 42, \PhpOpcua\Client\Types\BuiltinType::Int32))
                 ->toThrow(ConnectionException::class);
         });
 
@@ -185,25 +185,25 @@ describe('ManagedClient Methods', function () {
         it('readMulti returns builder when called without args', function () {
             $client = new ManagedClient();
             $builder = $client->readMulti();
-            expect($builder)->toBeInstanceOf(\Gianfriaur\OpcuaPhpClient\Builder\ReadMultiBuilder::class);
+            expect($builder)->toBeInstanceOf(\PhpOpcua\Client\Builder\ReadMultiBuilder::class);
         });
 
         it('writeMulti returns builder when called without args', function () {
             $client = new ManagedClient();
             $builder = $client->writeMulti();
-            expect($builder)->toBeInstanceOf(\Gianfriaur\OpcuaPhpClient\Builder\WriteMultiBuilder::class);
+            expect($builder)->toBeInstanceOf(\PhpOpcua\Client\Builder\WriteMultiBuilder::class);
         });
 
         it('createMonitoredItems returns builder when called without items', function () {
             $client = new ManagedClient();
             $builder = $client->createMonitoredItems(1);
-            expect($builder)->toBeInstanceOf(\Gianfriaur\OpcuaPhpClient\Builder\MonitoredItemsBuilder::class);
+            expect($builder)->toBeInstanceOf(\PhpOpcua\Client\Builder\MonitoredItemsBuilder::class);
         });
 
         it('translateBrowsePaths returns builder when called without args', function () {
             $client = new ManagedClient();
             $builder = $client->translateBrowsePaths();
-            expect($builder)->toBeInstanceOf(\Gianfriaur\OpcuaPhpClient\Builder\BrowsePathsBuilder::class);
+            expect($builder)->toBeInstanceOf(\PhpOpcua\Client\Builder\BrowsePathsBuilder::class);
         });
 
     });

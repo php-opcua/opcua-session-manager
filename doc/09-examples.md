@@ -3,7 +3,7 @@
 ## Reading a Value
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 
 $client = new ManagedClient();
 $client->connect('opc.tcp://localhost:4840');
@@ -74,22 +74,26 @@ $results = $client->readMulti([
 ## Writing Values
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
+use PhpOpcua\Client\Types\BuiltinType;
 
+// Auto-detection (v4) — type inferred automatically
+$status = $client->write('ns=2;i=1001', 42);
+
+// Explicit type (still supported)
 $status = $client->write('ns=2;i=1001', 42, BuiltinType::Int32);
 
-// Multiple writes
+// Multiple writes (auto-detection and explicit can be mixed)
 $statuses = $client->writeMulti([
-    ['nodeId' => 'ns=2;i=1001', 'value' => 42, 'type' => BuiltinType::Int32],
+    ['nodeId' => 'ns=2;i=1001', 'value' => 42],
     ['nodeId' => 'ns=2;i=1002', 'value' => 3.14, 'type' => BuiltinType::Double],
-    ['nodeId' => 'ns=2;i=1003', 'value' => 'hello', 'type' => BuiltinType::String],
+    ['nodeId' => 'ns=2;i=1003', 'value' => 'hello'],
 ]);
 ```
 
 ## Calling a Method
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
+use PhpOpcua\Client\Types\Variant;
 
 $result = $client->call(
     'ns=2;i=100',       // object
@@ -132,9 +136,9 @@ $client->deleteSubscription($sub->subscriptionId);
 ## Secure Connection
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\Client\Security\SecurityPolicy;
+use PhpOpcua\Client\Security\SecurityMode;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 
 $client = new ManagedClient(
     socketPath: '/var/run/opcua-session-manager.sock',
@@ -171,7 +175,7 @@ echo $value->getValue();
 ## Daemon Health Monitoring
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
+use PhpOpcua\SessionManager\Client\SocketConnection;
 
 $response = SocketConnection::send('/tmp/opcua-session-manager.sock', [
     'command' => 'ping',
@@ -192,9 +196,9 @@ foreach ($response['data']['sessions'] as $session) {
 ## Error Handling
 
 ```php
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Exception\ServiceException;
-use Gianfriaur\OpcuaSessionManager\Exception\DaemonException;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Exception\ServiceException;
+use PhpOpcua\SessionManager\Exception\DaemonException;
 
 $client = new ManagedClient();
 

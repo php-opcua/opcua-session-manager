@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseNode;
-use Gianfriaur\OpcuaPhpClient\Types\BrowsePathResult;
-use Gianfriaur\OpcuaPhpClient\Types\BrowsePathTarget;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseResultSet;
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
-use Gianfriaur\OpcuaPhpClient\Types\CallResult;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaPhpClient\Types\DataValue;
-use Gianfriaur\OpcuaPhpClient\Types\LocalizedText;
-use Gianfriaur\OpcuaPhpClient\Types\MonitoredItemResult;
-use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\PublishResult;
-use Gianfriaur\OpcuaPhpClient\Types\QualifiedName;
-use Gianfriaur\OpcuaPhpClient\Types\ReferenceDescription;
-use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
-use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
-use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
+use PhpOpcua\Client\Types\BrowseDirection;
+use PhpOpcua\Client\Types\BrowseNode;
+use PhpOpcua\Client\Types\BrowsePathResult;
+use PhpOpcua\Client\Types\BrowsePathTarget;
+use PhpOpcua\Client\Types\BrowseResultSet;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Types\CallResult;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\Client\Types\DataValue;
+use PhpOpcua\Client\Types\LocalizedText;
+use PhpOpcua\Client\Types\MonitoredItemResult;
+use PhpOpcua\Client\Types\NodeClass;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\PublishResult;
+use PhpOpcua\Client\Types\QualifiedName;
+use PhpOpcua\Client\Types\ReferenceDescription;
+use PhpOpcua\Client\Types\SubscriptionResult;
+use PhpOpcua\Client\Types\TransferResult;
+use PhpOpcua\Client\Types\Variant;
+use PhpOpcua\SessionManager\Serialization\TypeSerializer;
 
 describe('TypeSerializer', function () {
 

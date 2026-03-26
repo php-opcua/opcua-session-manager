@@ -1,6 +1,6 @@
-# OPC UA PHP Client Session Manager
+# OPC UA Session Manager
 
-> Daemon-based session manager for opcua-php-client. Keeps OPC UA connections alive across PHP requests via a ReactPHP daemon and Unix socket IPC. ManagedClient is a drop-in replacement for Client — same OpcUaClientInterface, persistent sessions.
+> Daemon-based session manager for opcua-client. Keeps OPC UA connections alive across PHP requests via a ReactPHP daemon and Unix socket IPC. ManagedClient is a drop-in replacement for Client — same OpcUaClientInterface, persistent sessions.
 
 ## What is this
 
@@ -43,13 +43,13 @@ A PHP library that solves the OPC UA session persistence problem in PHP's reques
 ## Installation
 
 ```
-composer require gianfriaur/opcua-php-client-session-manager
+composer require php-opcua/opcua-session-manager
 ```
 
 ## Quick example
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Client\ManagedClient;
+use PhpOpcua\SessionManager\Client\ManagedClient;
 
 // Start daemon first: php bin/opcua-session-manager
 
@@ -88,29 +88,29 @@ $value = $client->read('i=2259'); // ~5ms instead of ~155ms
 
 ## Main classes
 
-- Gianfriaur\OpcuaSessionManager\Client\ManagedClient — drop-in OpcUaClientInterface proxy
-- Gianfriaur\OpcuaSessionManager\Client\SocketConnection — Unix socket JSON transport
-- Gianfriaur\OpcuaSessionManager\Daemon\SessionManagerDaemon — ReactPHP daemon
-- Gianfriaur\OpcuaSessionManager\Daemon\CommandHandler — IPC command dispatch and security
-- Gianfriaur\OpcuaSessionManager\Daemon\Session — session wrapper
-- Gianfriaur\OpcuaSessionManager\Daemon\SessionStore — in-memory session registry
-- Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer — JSON ↔ OPC UA type conversion
-- Gianfriaur\OpcuaSessionManager\Exception\DaemonException — daemon communication errors
-- Gianfriaur\OpcuaSessionManager\Exception\SessionNotFoundException — session not found
-- Gianfriaur\OpcuaSessionManager\Exception\SerializationException — type serialization errors
+- PhpOpcua\SessionManager\Client\ManagedClient — drop-in OpcUaClientInterface proxy
+- PhpOpcua\SessionManager\Client\SocketConnection — Unix socket JSON transport
+- PhpOpcua\SessionManager\Daemon\SessionManagerDaemon — ReactPHP daemon
+- PhpOpcua\SessionManager\Daemon\CommandHandler — IPC command dispatch and security
+- PhpOpcua\SessionManager\Daemon\Session — session wrapper
+- PhpOpcua\SessionManager\Daemon\SessionStore — in-memory session registry
+- PhpOpcua\SessionManager\Serialization\TypeSerializer — JSON ↔ OPC UA type conversion
+- PhpOpcua\SessionManager\Exception\DaemonException — daemon communication errors
+- PhpOpcua\SessionManager\Exception\SessionNotFoundException — session not found
+- PhpOpcua\SessionManager\Exception\SerializationException — type serialization errors
 
 ## Related packages
 
-- gianfriaur/opcua-php-client: core OPC UA client library (required dependency)
-- gianfriaur/opcua-laravel-client: Laravel integration (service provider, facade, config)
-- GianfriAur/opcua-test-server-suite: Docker-based OPC UA test servers
+- php-opcua/opcua-client: core OPC UA client library (required dependency)
+- php-opcua/opcua-laravel-client: Laravel integration (service provider, facade, config)
+- php-opcua/opcua-test-server-suite: Docker-based OPC UA test servers
 
 ## Requirements
 
 - PHP >= 8.2
 - ext-openssl
 - ext-pcntl (recommended)
-- gianfriaur/opcua-php-client ^3.0
+- php-opcua/opcua-client ^4.0
 
 ## License
 
@@ -118,7 +118,7 @@ MIT
 
 ## Links
 
-- Repository: https://github.com/GianfriAur/opcua-php-client-session-manager
-- Documentation: https://github.com/GianfriAur/opcua-php-client-session-manager/tree/master/doc
-- Issues: https://github.com/GianfriAur/opcua-php-client-session-manager/issues
-- Packagist: https://packagist.org/packages/gianfriaur/opcua-php-client-session-manager
+- Repository: https://github.com/php-opcua/opcua-session-manager
+- Documentation: https://github.com/php-opcua/opcua-session-manager/tree/master/doc
+- Issues: https://github.com/php-opcua/opcua-session-manager/issues
+- Packagist: https://packagist.org/packages/php-opcua/opcua-session-manager

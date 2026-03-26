@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\QualifiedName;
-use Gianfriaur\OpcuaPhpClient\Types\StatusCode;
-use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\QualifiedName;
+use PhpOpcua\Client\Types\StatusCode;
+use PhpOpcua\SessionManager\Tests\Integration\Helpers\TestHelper;
 
 beforeAll(fn() => TestHelper::startDaemon());
 afterAll(fn() => TestHelper::stopDaemon());

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Client;
-use Gianfriaur\OpcuaSessionManager\Daemon\Session;
+use PhpOpcua\Client\Client;
+use PhpOpcua\SessionManager\Daemon\Session;
 
 describe('Session', function () {
 

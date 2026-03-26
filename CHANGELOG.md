@@ -1,10 +1,58 @@
 # Changelog
 
+## [4.0.0] - 2026-03-26
+
+### Rebranding
+
+- **Package renamed** from `php-opcua/opcua-client-session-manager` to `php-opcua/opcua-session-manager`.
+- **Namespace renamed** from `Gianfriaur\OpcuaSessionManager` to `PhpOpcua\SessionManager`. All classes, tests, and configuration updated accordingly.
+- **Dependency renamed** from `gianfriaur/opcua-php-client` to `php-opcua/opcua-client`. Dependency namespace changed from `Gianfriaur\OpcuaPhpClient` to `PhpOpcua\Client`.
+- **Repository moved** to [github.com/php-opcua/opcua-session-manager](https://github.com/php-opcua/opcua-session-manager).
+- All documentation, URLs, composer.json metadata, and code references updated to reflect the new organization.
+
+### Changed
+
+- **Breaking**: Updated dependency `php-opcua/opcua-client` from `^3.0` to `^4.0`.
+- **Breaking**: **ClientBuilder/Client split.** The daemon's `CommandHandler` now uses `ClientBuilder::create()` instead of `new Client()`. All configuration (security, timeout, cache, batching, etc.) is applied to the builder before calling `connect()`, which returns a `Client` instance. This mirrors the upstream v4.0.0 architecture change. No impact on `ManagedClient` consumers — the proxy API remains the same.
+- **Breaking**: `write()` type parameter is now nullable (`?BuiltinType $type = null`). When omitted, the daemon's underlying client auto-detects the node's type by reading it first, then caches the result for subsequent writes. Existing code passing an explicit `BuiltinType` continues to work unchanged.
+- **Breaking**: `writeMulti()` items can now have a nullable `type` field. When `type` is null or omitted, auto-detection is used per-node.
+- `read()` now accepts a third parameter `bool $refresh = false`. When `true`, the daemon bypasses the read metadata cache and forces a server read. Default `false` preserves existing behaviour.
+- Method whitelist expanded from 37 to 45 methods to support all new v4.0.0 operations.
+- `psr/event-dispatcher` ^1.0 added as dependency (interface-only package, zero runtime code).
+
+### Added
+
+- **`modifyMonitoredItems(int $subscriptionId, array $itemsToModify): MonitoredItemModifyResult[]`** — Change sampling interval, queue size, and other parameters on existing monitored items without recreating them. Proxied to the daemon's underlying `Client`. Returns `MonitoredItemModifyResult[]` with revised parameters.
+- **`setTriggering(int $subscriptionId, int $triggeringItemId, array $linksToAdd, array $linksToRemove): SetTriggeringResult`** — Configure a monitored item as a trigger for other items. Linked items are only sampled when the trigger changes. Returns `SetTriggeringResult` with per-link status codes.
+- **Trust store support (daemon-side).** Server certificate validation can now be configured through `ManagedClient`:
+  - `setTrustStorePath(string)` — Set the file-based trust store path. The daemon creates a `FileTrustStore` instance.
+  - `setTrustPolicy(?TrustPolicy)` — Set the validation level: `Fingerprint`, `FingerprintAndExpiry`, or `Full`. Pass `null` to disable.
+  - `autoAccept(bool $enabled, bool $force)` — Enable TOFU (Trust On First Use) for unknown server certificates.
+  - `trustCertificate(string $certDer)` — Manually trust a DER-encoded certificate (proxied to daemon via IPC).
+  - `untrustCertificate(string $fingerprint)` — Remove a certificate from the trust store (proxied to daemon via IPC).
+  - `getTrustPolicy(): ?TrustPolicy` — Get the current trust policy.
+  - `getTrustStore(): ?TrustStoreInterface` — Returns `null` on `ManagedClient` (trust store lives daemon-side).
+- **Write type auto-detection forwarding.** `setAutoDetectWriteType(bool)` on `ManagedClient` configures whether the daemon's `Client` auto-detects write types. Enabled by default.
+- **Read metadata cache forwarding.** `setReadMetadataCache(bool)` on `ManagedClient` enables caching of non-Value attributes (DisplayName, BrowseName, DataType, etc.) on the daemon's `Client`.
+- **PSR-14 Event Dispatcher interface compliance.** `ManagedClient` now exposes `setEventDispatcher(EventDispatcherInterface)` and `getEventDispatcher()`. Events are dispatched locally on the `ManagedClient` side (daemon-side events are handled by the daemon's own dispatcher). Default: `NullEventDispatcher`.
+- `TypeSerializer` now serializes/deserializes `MonitoredItemModifyResult`, `SetTriggeringResult`, and `ExtensionObject` DTOs.
+- `TypeSerializer::deserializeBuiltinType()` now accepts `?int` and returns `?BuiltinType` for nullable write type support.
+- `TypeSerializer` handles `ExtensionObject` values inside `Variant` deserialization.
+- New IPC config keys in the `open` command: `trustStorePath`, `trustPolicy`, `autoAccept`, `autoAcceptForce`, `autoDetectWriteType`, `readMetadataCache`.
+- `CommandHandler` now configures `ClientBuilder` with trust store, trust policy, auto-accept, auto-detect write type, and read metadata cache settings from the IPC `open` command.
+
+### Breaking Changes
+
+- Package name changed: `composer require php-opcua/opcua-session-manager` (was `php-opcua/opcua-client-session-manager`).
+- Namespace changed: `PhpOpcua\SessionManager\` (was `Gianfriaur\OpcuaSessionManager\`).
+- `write()` signature changed from `write(NodeId|string, mixed, BuiltinType)` to `write(NodeId|string, mixed, ?BuiltinType = null)`. The third parameter is now optional.
+- Dependency `php-opcua/opcua-client` ^4.0 required (was `php-opcua/opcua-client` ^3.0).
+
 ## [3.0.0] - 2026-03-23
 
 ### Changed
 
-- **Breaking**: Updated dependency `gianfriaur/opcua-php-client` from `^2.0` to `^3.0`.
+- **Breaking**: Updated dependency `php-opcua/opcua-client` from `^2.0` to `^3.0`.
 - **Breaking**: `nodeClassMask` parameter replaced with `nodeClasses` array. Browse methods (`browse()`, `browseWithContinuation()`, `browseAll()`, `browseRecursive()`) now accept `NodeClass[] $nodeClasses = []` instead of `int $nodeClassMask = 0`. Pass an array of `NodeClass` enum values (e.g. `[NodeClass::Object, NodeClass::Variable]`) instead of a raw bitmask integer. Empty array means all classes (same as the old `0`).
 - **Breaking**: Strict return types for all service responses. The following methods now return typed DTOs instead of associative arrays:
   - `createSubscription()` → `SubscriptionResult` (`->subscriptionId`, `->revisedPublishingInterval`, `->revisedLifetimeCount`, `->revisedMaxKeepAliveCount`)
@@ -15,7 +63,7 @@
   - `publish()` → `PublishResult` (`->subscriptionId`, `->sequenceNumber`, `->moreNotifications`, `->notifications`, `->availableSequenceNumbers`)
   - `translateBrowsePaths()` → `BrowsePathResult[]` (`->statusCode`, `->targets`) with `BrowsePathTarget` (`->targetId`, `->remainingPathIndex`)
 - **Breaking**: Ambiguous `$items` parameters renamed for named parameter clarity: `readMulti($readItems)`, `writeMulti($writeItems)`, `createMonitoredItems($subscriptionId, $monitoredItems)`. Only affects code using named parameters.
-- All `TypeSerializer` getters updated to use `public readonly` properties from `opcua-php-client` v3.0.0 (`$ref->nodeId` instead of `$ref->getNodeId()`, etc.).
+- All `TypeSerializer` getters updated to use `public readonly` properties from `opcua-client` v3.0.0 (`$ref->nodeId` instead of `$ref->getNodeId()`, etc.).
 - `TypeSerializer` now preserves `Variant` multi-dimensional array dimensions through serialization/deserialization roundtrips.
 - Method whitelist expanded from 32 to 37 methods to support all new v3.0.0 operations.
 
@@ -55,7 +103,7 @@
 
 ### Changed
 
-- **Breaking**: Updated dependency `gianfriaur/opcua-php-client` from `^1.1` to `^2.0`.
+- **Breaking**: Updated dependency `php-opcua/opcua-client` from `^1.1` to `^2.0`.
 - **Breaking**: `browse()` and `browseWithContinuation()` `$direction` parameter changed from `int` to `BrowseDirection` enum. Replace raw integers (`0`, `1`) with `BrowseDirection::Forward`, `BrowseDirection::Inverse`, or `BrowseDirection::Both`.
 - Updated CI test server suite from `opcua-test-server-suite@v1.1.2` to `@v1.1.4`.
 - Method whitelist expanded from 18 to 32 methods to support all new v2.0.0 operations.
@@ -81,9 +129,9 @@
 
 ### Changed
 
-- Updated dependency `gianfriaur/opcua-php-client` from `^1.0` to `^1.1`, requiring the new auto-generated certificate feature introduced in that release.
+- Updated dependency `php-opcua/opcua-client` from `^1.0` to `^1.1`, requiring the new auto-generated certificate feature introduced in that release.
 
 ### Added
 
-- **Auto-generated client certificate support.** When a secure connection is opened through the daemon with `SecurityPolicy` and `SecurityMode` configured but no `clientCertPath`/`clientKeyPath` provided, the underlying `Client` automatically generates an in-memory self-signed certificate. The behaviour is transparent and inherited from `opcua-php-client` v1.1 — no changes required in `ManagedClient` or `CommandHandler`.
+- **Auto-generated client certificate support.** When a secure connection is opened through the daemon with `SecurityPolicy` and `SecurityMode` configured but no `clientCertPath`/`clientKeyPath` provided, the underlying `Client` automatically generates an in-memory self-signed certificate. The behaviour is transparent and inherited from `opcua-client` v1.1 — no changes required in `ManagedClient` or `CommandHandler`.
 - Unit and integration tests for the auto-generated certificate flow.

@@ -1,6 +1,6 @@
 # Type Serialization
 
-`TypeSerializer` converts OPC UA types and v3.0.0 DTOs into JSON-safe arrays for IPC transport, and reconstructs them on the other side.
+`TypeSerializer` converts OPC UA types and v4.0.0 DTOs into JSON-safe arrays for IPC transport, and reconstructs them on the other side.
 
 ## Conversion Table
 
@@ -23,7 +23,7 @@
 | scalars | as-is |
 | arrays | recursively serialized |
 
-## v3.0.0 DTO Conversion
+## v4.0.0 DTO Conversion
 
 | DTO | JSON Representation |
 |---|---|
@@ -61,7 +61,7 @@ Some variant values require type-specific deserialization:
 ## Programmatic Usage
 
 ```php
-use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
+use PhpOpcua\SessionManager\Serialization\TypeSerializer;
 
 $serializer = new TypeSerializer();
 

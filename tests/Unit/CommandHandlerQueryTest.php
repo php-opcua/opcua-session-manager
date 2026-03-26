@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Client;
-use Gianfriaur\OpcuaPhpClient\Exception\ConnectionException;
-use Gianfriaur\OpcuaPhpClient\Types\BrowseResultSet;
-use Gianfriaur\OpcuaPhpClient\Types\CallResult;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaPhpClient\Types\DataValue;
-use Gianfriaur\OpcuaPhpClient\Types\MonitoredItemResult;
-use Gianfriaur\OpcuaPhpClient\Types\PublishResult;
-use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
-use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
-use Gianfriaur\OpcuaSessionManager\Daemon\CommandHandler;
-use Gianfriaur\OpcuaSessionManager\Daemon\Session;
-use Gianfriaur\OpcuaSessionManager\Daemon\SessionStore;
+use PhpOpcua\Client\Client;
+use PhpOpcua\Client\Exception\ConnectionException;
+use PhpOpcua\Client\Types\BrowseResultSet;
+use PhpOpcua\Client\Types\CallResult;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\Client\Types\DataValue;
+use PhpOpcua\Client\Types\MonitoredItemResult;
+use PhpOpcua\Client\Types\PublishResult;
+use PhpOpcua\Client\Types\SubscriptionResult;
+use PhpOpcua\Client\Types\TransferResult;
+use PhpOpcua\Client\Types\Variant;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\SessionManager\Daemon\CommandHandler;
+use PhpOpcua\SessionManager\Daemon\Session;
+use PhpOpcua\SessionManager\Daemon\SessionStore;
 
 describe('CommandHandler Query', function () {
 

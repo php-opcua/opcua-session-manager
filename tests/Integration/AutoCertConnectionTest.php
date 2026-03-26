@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Security\SecurityMode;
-use Gianfriaur\OpcuaPhpClient\Security\SecurityPolicy;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\StatusCode;
-use Gianfriaur\OpcuaSessionManager\Client\SocketConnection;
-use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
+use PhpOpcua\Client\Security\SecurityMode;
+use PhpOpcua\Client\Security\SecurityPolicy;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\StatusCode;
+use PhpOpcua\SessionManager\Client\SocketConnection;
+use PhpOpcua\SessionManager\Tests\Integration\Helpers\TestHelper;
 
-// Tests for auto-generated client certificate connections (opcua-php-client v1.1+).
+// Tests for auto-generated client certificate connections (opcua-client v1.1+).
 // The daemon's Client auto-generates a self-signed certificate when security
 // policy/mode are configured but no explicit clientCertPath/clientKeyPath are provided.
 

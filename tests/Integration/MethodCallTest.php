@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
-use Gianfriaur\OpcuaPhpClient\Types\StatusCode;
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
-use Gianfriaur\OpcuaSessionManager\Tests\Integration\Helpers\TestHelper;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Types\StatusCode;
+use PhpOpcua\Client\Types\Variant;
+use PhpOpcua\SessionManager\Tests\Integration\Helpers\TestHelper;
 
 beforeAll(fn() => TestHelper::startDaemon());
 afterAll(fn() => TestHelper::stopDaemon());

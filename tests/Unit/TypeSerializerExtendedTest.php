@@ -2,26 +2,26 @@
 
 declare(strict_types=1);
 
-use Gianfriaur\OpcuaPhpClient\Types\BrowseDirection;
-use Gianfriaur\OpcuaPhpClient\Types\BrowsePathResult;
-use Gianfriaur\OpcuaPhpClient\Types\BrowsePathTarget;
-use Gianfriaur\OpcuaPhpClient\Types\BuiltinType;
-use Gianfriaur\OpcuaPhpClient\Types\ConnectionState;
-use Gianfriaur\OpcuaPhpClient\Types\DataValue;
-use Gianfriaur\OpcuaPhpClient\Types\EndpointDescription;
-use Gianfriaur\OpcuaPhpClient\Types\LocalizedText;
-use Gianfriaur\OpcuaPhpClient\Types\MonitoredItemResult;
-use Gianfriaur\OpcuaPhpClient\Types\NodeClass;
-use Gianfriaur\OpcuaPhpClient\Types\NodeId;
-use Gianfriaur\OpcuaPhpClient\Types\PublishResult;
-use Gianfriaur\OpcuaPhpClient\Types\QualifiedName;
-use Gianfriaur\OpcuaPhpClient\Types\ReferenceDescription;
-use Gianfriaur\OpcuaPhpClient\Types\SubscriptionResult;
-use Gianfriaur\OpcuaPhpClient\Types\TransferResult;
-use Gianfriaur\OpcuaPhpClient\Types\UserTokenPolicy;
-use Gianfriaur\OpcuaPhpClient\Types\Variant;
-use Gianfriaur\OpcuaSessionManager\Exception\SerializationException;
-use Gianfriaur\OpcuaSessionManager\Serialization\TypeSerializer;
+use PhpOpcua\Client\Types\BrowseDirection;
+use PhpOpcua\Client\Types\BrowsePathResult;
+use PhpOpcua\Client\Types\BrowsePathTarget;
+use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Types\ConnectionState;
+use PhpOpcua\Client\Types\DataValue;
+use PhpOpcua\Client\Types\EndpointDescription;
+use PhpOpcua\Client\Types\LocalizedText;
+use PhpOpcua\Client\Types\MonitoredItemResult;
+use PhpOpcua\Client\Types\NodeClass;
+use PhpOpcua\Client\Types\NodeId;
+use PhpOpcua\Client\Types\PublishResult;
+use PhpOpcua\Client\Types\QualifiedName;
+use PhpOpcua\Client\Types\ReferenceDescription;
+use PhpOpcua\Client\Types\SubscriptionResult;
+use PhpOpcua\Client\Types\TransferResult;
+use PhpOpcua\Client\Types\UserTokenPolicy;
+use PhpOpcua\Client\Types\Variant;
+use PhpOpcua\SessionManager\Exception\SerializationException;
+use PhpOpcua\SessionManager\Serialization\TypeSerializer;
 
 describe('TypeSerializer — Extended', function () {
 
@@ -62,14 +62,14 @@ describe('TypeSerializer — Extended', function () {
         });
 
         it('serializes CallResult via generic serialize', function () {
-            $result = new \Gianfriaur\OpcuaPhpClient\Types\CallResult(0, [], []);
+            $result = new \PhpOpcua\Client\Types\CallResult(0, [], []);
             $serialized = $this->serializer->serialize($result);
 
             expect($serialized['statusCode'])->toBe(0);
         });
 
         it('serializes BrowseResultSet via generic serialize', function () {
-            $result = new \Gianfriaur\OpcuaPhpClient\Types\BrowseResultSet([], null);
+            $result = new \PhpOpcua\Client\Types\BrowseResultSet([], null);
             $serialized = $this->serializer->serialize($result);
 
             expect($serialized['references'])->toBe([]);
@@ -270,7 +270,7 @@ describe('TypeSerializer — Extended', function () {
         });
 
         it('dispatches BrowseNode through generic serialize', function () {
-            $node = new \Gianfriaur\OpcuaPhpClient\Types\BrowseNode(
+            $node = new \PhpOpcua\Client\Types\BrowseNode(
                 new ReferenceDescription(
                     NodeId::numeric(0, 35),
                     true,
