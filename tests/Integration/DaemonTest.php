@@ -107,7 +107,7 @@ describe('Daemon', function () {
     })->group('integration');
 
     it('handles multiple concurrent sessions', function () {
-        // Open two sessions
+        // Open two sessions (forceNew to bypass session reuse)
         $response1 = SocketConnection::send(TestHelper::SOCKET_PATH, [
             'command' => 'open',
             'endpointUrl' => TestHelper::ENDPOINT_NO_SECURITY,
@@ -117,6 +117,7 @@ describe('Daemon', function () {
             'command' => 'open',
             'endpointUrl' => TestHelper::ENDPOINT_NO_SECURITY,
             'config' => [],
+            'forceNew' => true,
         ]);
 
         expect($response1['success'])->toBeTrue();

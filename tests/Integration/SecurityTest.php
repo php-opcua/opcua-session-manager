@@ -392,13 +392,14 @@ describe('Security: Max sessions limit (integration)', function () {
     it('enforces max sessions limit', function () {
         $sessionIds = [];
         try {
-            // Open 3 sessions (the max for auth daemon)
+            // Open 3 sessions (the max for auth daemon), forceNew to bypass reuse
             for ($i = 0; $i < 3; $i++) {
                 $response = SocketConnection::send(AUTH_SOCKET_PATH, [
                     'command' => 'open',
                     'endpointUrl' => TestHelper::ENDPOINT_NO_SECURITY,
                     'config' => [],
                     'authToken' => AUTH_TOKEN,
+                    'forceNew' => true,
                 ]);
                 expect($response['success'])->toBeTrue();
                 $sessionIds[] = $response['data']['sessionId'];
@@ -410,6 +411,7 @@ describe('Security: Max sessions limit (integration)', function () {
                 'endpointUrl' => TestHelper::ENDPOINT_NO_SECURITY,
                 'config' => [],
                 'authToken' => AUTH_TOKEN,
+                'forceNew' => true,
             ]);
 
             expect($response['success'])->toBeFalse();
@@ -428,13 +430,14 @@ describe('Security: Max sessions limit (integration)', function () {
     it('allows new sessions after closing one at max capacity', function () {
         $sessionIds = [];
         try {
-            // Fill to max
+            // Fill to max, forceNew to bypass reuse
             for ($i = 0; $i < 3; $i++) {
                 $response = SocketConnection::send(AUTH_SOCKET_PATH, [
                     'command' => 'open',
                     'endpointUrl' => TestHelper::ENDPOINT_NO_SECURITY,
                     'config' => [],
                     'authToken' => AUTH_TOKEN,
+                    'forceNew' => true,
                 ]);
                 expect($response['success'])->toBeTrue();
                 $sessionIds[] = $response['data']['sessionId'];
@@ -453,6 +456,7 @@ describe('Security: Max sessions limit (integration)', function () {
                 'endpointUrl' => TestHelper::ENDPOINT_NO_SECURITY,
                 'config' => [],
                 'authToken' => AUTH_TOKEN,
+                'forceNew' => true,
             ]);
             expect($response['success'])->toBeTrue();
             $sessionIds[] = $response['data']['sessionId'];

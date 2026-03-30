@@ -83,6 +83,22 @@ class SessionStore
     }
 
     /**
+     * @param string $endpointUrl
+     * @param array $config Sanitized config to match against.
+     * @return ?Session
+     */
+    public function findByEndpointAndConfig(string $endpointUrl, array $config): ?Session
+    {
+        foreach ($this->sessions as $session) {
+            if ($session->endpointUrl === $endpointUrl && $session->config === $config) {
+                return $session;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @return Session[]
      */
     public function all(): array

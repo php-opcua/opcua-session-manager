@@ -25,6 +25,7 @@ PHP's request/response model destroys all state — including network connection
 **What you get:**
 
 - **Session persistence** — OPC UA connections survive across HTTP requests. Pay the handshake cost once, reuse forever
+- **Automatic session reuse** — reconnecting to the same endpoint returns the existing session automatically, no manual session ID tracking needed
 - **Drop-in replacement** — `ManagedClient` implements the same `OpcUaClientInterface` as the direct `Client`. Swap one line, keep all your code
 - **All OPC UA operations** — browse, read, write, method calls, subscriptions, history, path resolution, type discovery
 - **Security hardening** — method whitelist, IPC authentication, credential stripping, error sanitization, connection limits
@@ -69,13 +70,18 @@ That's it. Same API as the direct `Client`, but the session stays alive between 
 // Request 1: open session — handshake happens once
 $client = new ManagedClient();
 $client->connect('opc.tcp://localhost:4840');
-$_SESSION['opcua'] = $client->getSessionId();
 // Do NOT call disconnect() — session stays alive in daemon
 
-// Request 2: reuse the same session — no handshake needed
+// Request 2: same endpoint → reuses existing session automatically
 $client = new ManagedClient();
 $client->connect('opc.tcp://localhost:4840');
+$client->wasSessionReused(); // true — no handshake needed
 $value = $client->read('i=2259'); // ~5ms instead of ~155ms
+
+// If you need a separate parallel session to the same server:
+$client2 = new ManagedClient();
+$client2->connectForceNew('opc.tcp://localhost:4840');
+$client2->wasSessionReused(); // false — new session created
 ```
 
 ### Browse and read
@@ -181,6 +187,7 @@ Request N:                       [read 5ms]           → total ~5ms
 |---|---|
 | **Drop-in Replacement** | `ManagedClient` implements the same `OpcUaClientInterface` as the direct `Client` |
 | **Session Persistence** | OPC UA sessions survive across PHP requests via the daemon |
+| **Automatic Session Reuse** | Reconnecting to the same endpoint returns the existing session instead of creating a new one |
 | **All OPC UA Operations** | Browse, read, write, method calls, subscriptions, history, path resolution |
 | **String NodeIds** | All methods accept `'i=2259'` or `'ns=2;s=MyNode'` in addition to `NodeId` objects |
 | **Fluent Builder API** | `readMulti()`, `writeMulti()`, `createMonitoredItems()`, `translateBrowsePaths()` support chainable builders |

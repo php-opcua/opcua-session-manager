@@ -138,12 +138,23 @@ class CommandHandler
 
     private function handleOpen(array $command): array
     {
+        $endpointUrl = $command['endpointUrl'] ?? '';
+        $config = $command['config'] ?? [];
+        $forceNew = (bool)($command['forceNew'] ?? false);
+
+        $sanitizedConfig = $this->sanitizeConfig($config);
+
+        if (!$forceNew) {
+            $existing = $this->store->findByEndpointAndConfig($endpointUrl, $sanitizedConfig);
+            if ($existing !== null) {
+                $existing->touch();
+                return $this->success(['sessionId' => $existing->id, 'reused' => true]);
+            }
+        }
+
         if ($this->maxSessions > 0 && $this->store->count() >= $this->maxSessions) {
             return $this->error('max_sessions_reached', "Maximum number of sessions ({$this->maxSessions}) reached");
         }
-
-        $endpointUrl = $command['endpointUrl'] ?? '';
-        $config = $command['config'] ?? [];
 
         $this->validateCertPaths($config);
 
@@ -209,7 +220,6 @@ class CommandHandler
         $client = $builder->connect($endpointUrl);
 
         $sessionId = bin2hex(random_bytes(16));
-        $sanitizedConfig = $this->sanitizeConfig($config);
         $session = new Session(
             id: $sessionId,
             client: $client,

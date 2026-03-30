@@ -316,6 +316,118 @@ describe('CommandHandler Extended', function () {
 
     });
 
+    describe('Session reuse on open', function () {
+
+        it('reuses existing session for same endpoint and config', function () {
+            $client = $this->createStub(Client::class);
+            $session = new Session('existing-id', $client, 'opc.tcp://localhost:4840', ['username' => 'admin'], microtime(true) - 50);
+            $this->store->create($session);
+
+            $result = $this->handler->handle([
+                'command' => 'open',
+                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'config' => ['username' => 'admin'],
+            ]);
+
+            expect($result['success'])->toBeTrue();
+            expect($result['data']['sessionId'])->toBe('existing-id');
+            expect($result['data']['reused'])->toBeTrue();
+            expect($this->store->count())->toBe(1);
+        });
+
+        it('reuses session and touches it', function () {
+            $client = $this->createStub(Client::class);
+            $oldTime = microtime(true) - 100;
+            $session = new Session('existing-id', $client, 'opc.tcp://localhost:4840', [], $oldTime);
+            $this->store->create($session);
+
+            $this->handler->handle([
+                'command' => 'open',
+                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'config' => [],
+            ]);
+
+            expect($this->store->get('existing-id')->lastUsed)->toBeGreaterThan($oldTime);
+        });
+
+        it('does not reuse session when endpoint differs', function () {
+            $client = $this->createStub(Client::class);
+            $session = new Session('existing-id', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+            $this->store->create($session);
+
+            // This will fail at connect (no real server), but should NOT return 'existing-id'
+            $result = $this->handler->handle([
+                'command' => 'open',
+                'endpointUrl' => 'opc.tcp://other-host:4840',
+                'config' => [],
+            ]);
+
+            // It should try to create a new session (and fail since no real server)
+            expect($result['data']['sessionId'] ?? null)->not->toBe('existing-id');
+        });
+
+        it('does not reuse session when config differs', function () {
+            $client = $this->createStub(Client::class);
+            $session = new Session('existing-id', $client, 'opc.tcp://localhost:4840', ['username' => 'admin'], microtime(true));
+            $this->store->create($session);
+
+            $result = $this->handler->handle([
+                'command' => 'open',
+                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'config' => ['username' => 'other'],
+            ]);
+
+            expect($result['data']['sessionId'] ?? null)->not->toBe('existing-id');
+        });
+
+        it('forces new session when forceNew is true', function () {
+            $client = $this->createStub(Client::class);
+            $session = new Session('existing-id', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+            $this->store->create($session);
+
+            // forceNew bypasses reuse — will try to create new (and fail since no real server)
+            $result = $this->handler->handle([
+                'command' => 'open',
+                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'config' => [],
+                'forceNew' => true,
+            ]);
+
+            expect($result['data']['sessionId'] ?? null)->not->toBe('existing-id');
+        });
+
+        it('does not return reused flag on new sessions', function () {
+            // No existing sessions — will fail at connect but won't have 'reused'
+            $result = $this->handler->handle([
+                'command' => 'open',
+                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'config' => [],
+            ]);
+
+            // New session attempt (fails because no server), so no 'reused' in response
+            expect($result['data']['reused'] ?? null)->toBeNull();
+        });
+
+        it('strips sensitive config before matching', function () {
+            $client = $this->createStub(Client::class);
+            // Session stored with sanitized config (no password)
+            $session = new Session('existing-id', $client, 'opc.tcp://localhost:4840', ['username' => 'admin'], microtime(true));
+            $this->store->create($session);
+
+            // Open with password in config — should match after sanitization
+            $result = $this->handler->handle([
+                'command' => 'open',
+                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'config' => ['username' => 'admin', 'password' => 'secret'],
+            ]);
+
+            expect($result['success'])->toBeTrue();
+            expect($result['data']['sessionId'])->toBe('existing-id');
+            expect($result['data']['reused'])->toBeTrue();
+        });
+
+    });
+
     describe('throwInvalidArgumentIf', function () {
 
         it('throws when condition is true', function () {

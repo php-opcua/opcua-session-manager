@@ -52,6 +52,7 @@ use Psr\SimpleCache\CacheInterface;
 class ManagedClient implements OpcUaClientInterface
 {
     private ?string $sessionId = null;
+    private bool $sessionReused = false;
     private array $config = [];
     private TypeSerializer $serializer;
 
@@ -467,6 +468,39 @@ class ManagedClient implements OpcUaClientInterface
         ]);
 
         $this->sessionId = $response['sessionId'];
+        $this->sessionReused = !empty($response['reused']);
+    }
+
+    /**
+     * Connect forcing a new session, even if one already exists for the same endpoint and config.
+     *
+     * @param string $endpointUrl
+     * @return void
+     *
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function connectForceNew(string $endpointUrl): void
+    {
+        $response = $this->sendCommand([
+            'command' => 'open',
+            'endpointUrl' => $endpointUrl,
+            'config' => $this->config,
+            'forceNew' => true,
+        ]);
+
+        $this->sessionId = $response['sessionId'];
+    }
+
+    /**
+     * Whether the last connect() call reused an existing daemon session.
+     *
+     * @return bool
+     */
+    public function wasSessionReused(): bool
+    {
+        return $this->sessionReused;
     }
 
     /**

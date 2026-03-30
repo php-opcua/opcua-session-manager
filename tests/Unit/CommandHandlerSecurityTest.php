@@ -190,13 +190,13 @@ describe('CommandHandler Security', function () {
             // Fill up the store to max (3)
             for ($i = 0; $i < 3; $i++) {
                 $client = $this->createStub(Client::class);
-                $session = new Session("sess{$i}", $client, 'opc.tcp://localhost:4840', [], microtime(true));
+                $session = new Session("sess{$i}", $client, "opc.tcp://host{$i}:4840", [], microtime(true));
                 $this->store->create($session);
             }
 
             $result = $this->handler->handle([
                 'command' => 'open',
-                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'endpointUrl' => 'opc.tcp://new-host:4840',
                 'config' => [],
             ]);
 
@@ -208,7 +208,7 @@ describe('CommandHandler Security', function () {
         it('allows open after closing a session', function () {
             for ($i = 0; $i < 3; $i++) {
                 $client = $this->createStub(Client::class);
-                $session = new Session("sess{$i}", $client, 'opc.tcp://localhost:4840', [], microtime(true));
+                $session = new Session("sess{$i}", $client, "opc.tcp://host{$i}:4840", [], microtime(true));
                 $this->store->create($session);
             }
 
@@ -219,7 +219,7 @@ describe('CommandHandler Security', function () {
             // (it will fail at connect since we have no real server, but not with max_sessions_reached)
             $result = $this->handler->handle([
                 'command' => 'open',
-                'endpointUrl' => 'opc.tcp://localhost:4840',
+                'endpointUrl' => 'opc.tcp://new-host:4840',
                 'config' => [],
             ]);
 

@@ -85,4 +85,34 @@ describe('SessionStore', function () {
         expect($this->store->count())->toBe(0);
     });
 
+    it('finds session by endpoint and config', function () {
+        $client = $this->createStub(Client::class);
+        $session = new Session('abc', $client, 'opc.tcp://localhost:4840', ['username' => 'admin'], microtime(true));
+        $this->store->create($session);
+
+        $found = $this->store->findByEndpointAndConfig('opc.tcp://localhost:4840', ['username' => 'admin']);
+        expect($found)->toBe($session);
+    });
+
+    it('returns null when no session matches endpoint', function () {
+        $client = $this->createStub(Client::class);
+        $this->store->create(new Session('abc', $client, 'opc.tcp://localhost:4840', [], microtime(true)));
+
+        $found = $this->store->findByEndpointAndConfig('opc.tcp://other:4840', []);
+        expect($found)->toBeNull();
+    });
+
+    it('returns null when endpoint matches but config differs', function () {
+        $client = $this->createStub(Client::class);
+        $this->store->create(new Session('abc', $client, 'opc.tcp://localhost:4840', ['username' => 'admin'], microtime(true)));
+
+        $found = $this->store->findByEndpointAndConfig('opc.tcp://localhost:4840', ['username' => 'other']);
+        expect($found)->toBeNull();
+    });
+
+    it('returns null when store is empty', function () {
+        $found = $this->store->findByEndpointAndConfig('opc.tcp://localhost:4840', []);
+        expect($found)->toBeNull();
+    });
+
 });

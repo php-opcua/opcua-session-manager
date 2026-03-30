@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.0.1] - 2026-03-30
+
+### Added
+
+- **Automatic session reuse.** When `connect()` is called with an endpoint URL and config that match an already-active session in the daemon, the existing session is returned instead of opening a new one. This eliminates accidental session duplication and makes multi-request persistence seamless — no need to manually track and pass session IDs. The reused session's inactivity timer is refreshed automatically.
+- **`connectForceNew(string $endpointUrl): void`** on `ManagedClient` — forces creation of a new session even when a matching one already exists. Use this when you explicitly need parallel sessions to the same server.
+- **`wasSessionReused(): bool`** on `ManagedClient` — returns `true` if the last `connect()` call reused an existing daemon session instead of creating a new one.
+- **`forceNew` flag** in the IPC `open` command — when `true`, bypasses session reuse and always creates a new session.
+- `SessionStore::findByEndpointAndConfig()` — finds an existing session by endpoint URL and sanitized config.
+- Unit tests for session reuse: matching endpoint/config, config mismatch, endpoint mismatch, `forceNew` bypass, sensitive config stripping, and touch-on-reuse.
+
+### Changed
+
+- The IPC `open` command response now includes `'reused' => true` when an existing session is returned.
+
 ## [4.0.0] - 2026-03-26
 
 ### Rebranding

@@ -96,7 +96,8 @@ describe('Session Persistence', function () {
         $client2 = null;
         try {
             $client1 = TestHelper::connectNoSecurity();
-            $client2 = TestHelper::connectNoSecurity();
+            $client2 = TestHelper::createManagedClient();
+            $client2->connectForceNew(TestHelper::ENDPOINT_NO_SECURITY);
 
             expect($client1->getSessionId())->not->toBe($client2->getSessionId());
 
@@ -122,7 +123,8 @@ describe('Session Persistence', function () {
         $client2 = null;
         try {
             $client1 = TestHelper::connectNoSecurity();
-            $client2 = TestHelper::connectNoSecurity();
+            $client2 = TestHelper::createManagedClient();
+            $client2->connectForceNew(TestHelper::ENDPOINT_NO_SECURITY);
 
             // Disconnect client1
             $client1->disconnect();
