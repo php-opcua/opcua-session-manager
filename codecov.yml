@@ -1,4 +1,4 @@
-# Coverage configuration for opcua-php-client-session-manager
+# Coverage configuration for opcua-session-manager
 #
 # SessionManagerDaemon is excluded from coverage because it runs as a separate
 # long-lived process (ReactPHP event loop). PHP coverage tools (pcov, xdebug)

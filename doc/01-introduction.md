@@ -101,5 +101,5 @@ OPC UA Server
 |---------|-------------|
 | [opcua-client](https://github.com/php-opcua/opcua-client) | Pure PHP OPC UA client — the core protocol implementation |
 | [opcua-session-manager](https://github.com/php-opcua/opcua-session-manager) | Session persistence daemon (this package) |
-| [opcua-laravel-client](https://github.com/php-opcua/opcua-laravel-client) | Laravel integration — service provider, facade, config |
-| [opcua-test-server-suite](https://github.com/php-opcua/opcua-test-server-suite) | Docker-based OPC UA test servers |
+| [laravel-opcua](https://github.com/php-opcua/laravel-opcua) | Laravel integration — service provider, facade, config |
+| [uanetstandard-test-suite](https://github.com/php-opcua/uanetstandard-test-suite) | Docker-based OPC UA test servers (UA-.NETStandard) |

@@ -33,8 +33,8 @@ composer install
 Integration tests require the OPC UA test server suite:
 
 ```bash
-git clone https://github.com/php-opcua/opcua-test-server-suite.git
-cd opcua-test-server-suite
+git clone https://github.com/php-opcua/uanetstandard-test-suite.git
+cd uanetstandard-test-suite
 docker compose up -d
 ```
 

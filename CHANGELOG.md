@@ -1,5 +1,15 @@
 # Changelog
 
+## [4.0.2] - 2026-04-07
+
+### Changed
+
+- Updated CI test server suite from `php-opcua/opcua-test-suite@v1.1.5` to `php-opcua/uanetstandard-test-suite@v1.0.0`.
+- Updated all documentation references: `opcua-test-server-suite` → `uanetstandard-test-suite`, `opcua-laravel-client` → `laravel-opcua`.
+- Added "Tested against the OPC UA reference implementation" disclaimer to README.
+- Added "Versioning" section to README.
+- Aligned Ecosystem table with `opcua-client` (added `opcua-cli`, `opcua-client-nodeset`).
+
 ## [4.0.1] - 2026-03-30
 
 ### Added
@@ -120,7 +130,7 @@
 
 - **Breaking**: Updated dependency `php-opcua/opcua-client` from `^1.1` to `^2.0`.
 - **Breaking**: `browse()` and `browseWithContinuation()` `$direction` parameter changed from `int` to `BrowseDirection` enum. Replace raw integers (`0`, `1`) with `BrowseDirection::Forward`, `BrowseDirection::Inverse`, or `BrowseDirection::Both`.
-- Updated CI test server suite from `opcua-test-server-suite@v1.1.2` to `@v1.1.4`.
+- Updated CI test server suite from `opcua-test-server-suite@v1.1.2` to `php-opcua/uanetstandard-test-suite@v1.0.0`.
 - Method whitelist expanded from 18 to 32 methods to support all new v2.0.0 operations.
 
 ### Added

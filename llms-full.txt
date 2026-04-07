@@ -389,7 +389,10 @@ src/
 
 - php-opcua/opcua-client: core OPC UA client library (required dependency)
 - php-opcua/opcua-laravel: Laravel integration (service provider, facade, config)
-- php-opcua/opcua-test-server-suite: Docker-based OPC UA test servers
+- php-opcua/laravel-opcua: Laravel integration (service provider, facade, config)
+- php-opcua/opcua-cli: CLI tool for OPC UA operations
+- php-opcua/opcua-client-nodeset: Pre-generated PHP types from OPC Foundation companion specifications
+- php-opcua/uanetstandard-test-suite: Docker-based OPC UA test servers (UA-.NETStandard)
 
 ## Links
 

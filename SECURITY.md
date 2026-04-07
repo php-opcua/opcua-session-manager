@@ -27,8 +27,8 @@ You should receive an acknowledgment within 48 hours. From there, we'll work tog
 This policy covers the `php-opcua/opcua-session-manager` library itself. For vulnerabilities in dependencies or related packages, please report them to the respective maintainers:
 
 - [opcua-client](https://github.com/php-opcua/opcua-client)
-- [opcua-laravel-client](https://github.com/php-opcua/opcua-laravel-client)
-- [opcua-test-server-suite](https://github.com/php-opcua/opcua-test-server-suite)
+- [laravel-opcua](https://github.com/php-opcua/laravel-opcua)
+- [uanetstandard-test-suite](https://github.com/php-opcua/uanetstandard-test-suite)
 
 ## Security Considerations
 

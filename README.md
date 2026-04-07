@@ -34,6 +34,20 @@ PHP's request/response model destroys all state — including network connection
 
 > **A note on versioning:** We're aware of the rapid major releases in a short time frame. This library is under active, full-time development right now — the goal is to reach a production-stable state as quickly as possible. Breaking changes are being bundled and shipped deliberately to avoid dragging them out across many minor releases. Once the API surface settles, major version bumps will become rare. Thanks for your patience.
 
+<table>
+<tr>
+<td>
+
+### Tested against the OPC UA reference implementation
+
+The underlying [opcua-client](https://github.com/php-opcua/opcua-client) is integration-tested against **[UA-.NETStandard](https://github.com/OPCFoundation/UA-.NETStandard)** — the **reference implementation** maintained by the OPC Foundation, the organization that defines the OPC UA specification. This is the same stack used by major industrial vendors to certify their products.
+
+This session manager is additionally integration-tested via [uanetstandard-test-suite](https://github.com/php-opcua/uanetstandard-test-suite), verifying that all OPC UA operations work correctly when proxied through the daemon's IPC layer.
+
+</td>
+</tr>
+</table>
+
 ## Quick Start
 
 ```bash
@@ -282,7 +296,7 @@ OPCUA_AUTH_TOKEN=$(cat /etc/opcua/daemon.token) php bin/opcua-session-manager \
 ./vendor/bin/pest tests/Integration/ --group=integration   # integration only
 ```
 
-340+ tests (unit + integration) covering browse, read/write, subscriptions, method calls, path resolution, connection state, security, type serialization, session persistence, session recovery, and all v4.0.0 DTOs.
+340+ tests (unit + integration). Integration tests run against [uanetstandard-test-suite](https://github.com/php-opcua/uanetstandard-test-suite) — a Docker-based OPC UA environment built on the OPC Foundation's UA-.NETStandard reference implementation — covering browse, read/write, subscriptions, method calls, path resolution, connection state, security, type serialization, session persistence, session recovery, and all v4.0.0 DTOs.
 
 > **Note on coverage:** `SessionManagerDaemon` is excluded from coverage reports because it runs as a separate long-lived process (ReactPHP event loop). PHP coverage tools (pcov, xdebug) only instrument the test runner process — they cannot track code executing inside a subprocess started via `proc_open()`. The daemon is fully tested by the integration suite, which starts a real daemon, sends IPC commands, and verifies responses. This is a known limitation shared by other daemon-based PHP packages (Laravel Horizon, Symfony Messenger, RoadRunner workers).
 
@@ -290,10 +304,29 @@ OPCUA_AUTH_TOKEN=$(cat /etc/opcua/daemon.token) php bin/opcua-session-manager \
 
 | Package | Description |
 |---------|-------------|
-| [opcua-client](https://github.com/php-opcua/opcua-client) | Pure PHP OPC UA client — the core protocol implementation |
-| [opcua-session-manager](https://github.com/php-opcua/opcua-session-manager) | Session persistence daemon (this package) |
-| [opcua-laravel-client](https://github.com/php-opcua/opcua-laravel-client) | Laravel integration — service provider, facade, config |
-| [opcua-test-server-suite](https://github.com/php-opcua/opcua-test-server-suite) | Docker-based OPC UA test servers for integration testing |
+| [opcua-client](https://github.com/php-opcua/opcua-client) | Pure PHP OPC UA client |
+| [opcua-cli](https://github.com/php-opcua/opcua-cli) | CLI tool — browse, read, write, watch, discover endpoints, manage certificates, generate code from NodeSet2.xml |
+| [opcua-session-manager](https://github.com/php-opcua/opcua-session-manager) | Daemon-based session persistence across PHP requests (this package) |
+| [opcua-client-nodeset](https://github.com/php-opcua/opcua-client-nodeset) | Pre-generated PHP types from 51 OPC Foundation companion specifications (DI, Robotics, Machinery, MachineTool, ISA-95, CNC, MTConnect, and more). 807 PHP files — NodeId constants, enums, typed DTOs, codecs, registrars with automatic dependency resolution. Just `composer require` and `loadGeneratedTypes()`. |
+| [laravel-opcua](https://github.com/php-opcua/laravel-opcua) | Laravel integration — service provider, facade, config |
+| [uanetstandard-test-suite](https://github.com/php-opcua/uanetstandard-test-suite) | Docker-based OPC UA test servers (UA-.NETStandard) for integration testing |
+
+## AI-Ready
+
+This package ships with machine-readable documentation designed for AI coding assistants (Claude, Cursor, Copilot, ChatGPT, and others). Feed these files to your AI so it knows how to use the library correctly:
+
+| File | Purpose |
+|------|---------|
+| [`llms.txt`](llms.txt) | Compact project summary — architecture, key classes, API signatures, and configuration. Optimized for LLM context windows with minimal token usage. |
+| [`llms-full.txt`](llms-full.txt) | Comprehensive technical reference — every class, method, DTO, serialization format, IPC protocol, and daemon internal. For deep dives and complex questions. |
+| [`llms-skills.md`](llms-skills.md) | Task-oriented recipes — step-by-step instructions for common tasks (install, configure, deploy, persist sessions, subscriptions, security, monitoring). Written so an AI can generate correct, production-ready code from a user's intent. |
+
+**How to use:** copy the files you need into your project's AI configuration directory. The files are located in `vendor/php-opcua/opcua-session-manager/` after `composer install`.
+
+- **Claude Code**: reference per-session with `--add-file vendor/php-opcua/opcua-session-manager/llms-skills.md`
+- **Cursor**: copy into your project's rules directory — `cp vendor/php-opcua/opcua-session-manager/llms-skills.md .cursor/rules/opcua-session-manager.md`
+- **GitHub Copilot**: copy or append the content into your project's `.github/copilot-instructions.md` file (create the file and directory if they don't exist). Copilot reads this file automatically for project-specific context
+- **Other tools**: paste the content into your system prompt, project knowledge base, or context configuration
 
 ## Roadmap
 
@@ -302,6 +335,10 @@ See [ROADMAP.md](ROADMAP.md) for what's coming next.
 ## Contributing
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Versioning
+
+This package follows the same version numbering as [`php-opcua/opcua-client`](https://github.com/php-opcua/opcua-client). Each release of `opcua-session-manager` is aligned with the corresponding release of the client library to ensure full compatibility.
 
 ## Changelog
 
