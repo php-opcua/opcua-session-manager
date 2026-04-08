@@ -82,4 +82,65 @@ describe('Session', function () {
         expect($session->isExpired(200))->toBeFalse();
     });
 
+    it('stores publishing interval with subscription', function () {
+        $client = $this->createStub(Client::class);
+        $session = new Session('s1', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+
+        $session->addSubscription(1, 500.0);
+        $session->addSubscription(2, 1000.0);
+
+        expect($session->getMinPublishingInterval())->toBe(0.5);
+    });
+
+    it('returns minimum publishing interval across subscriptions', function () {
+        $client = $this->createStub(Client::class);
+        $session = new Session('s1', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+
+        $session->addSubscription(1, 1000.0);
+        $session->addSubscription(2, 250.0);
+        $session->addSubscription(3, 500.0);
+
+        expect($session->getMinPublishingInterval())->toBe(0.25);
+    });
+
+    it('returns fallback interval when no subscriptions exist', function () {
+        $client = $this->createStub(Client::class);
+        $session = new Session('s1', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+
+        expect($session->getMinPublishingInterval())->toBe(0.5);
+    });
+
+    it('updates min interval when subscription is removed', function () {
+        $client = $this->createStub(Client::class);
+        $session = new Session('s1', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+
+        $session->addSubscription(1, 250.0);
+        $session->addSubscription(2, 1000.0);
+
+        expect($session->getMinPublishingInterval())->toBe(0.25);
+
+        $session->removeSubscription(1);
+
+        expect($session->getMinPublishingInterval())->toBe(1.0);
+    });
+
+    it('uses default publishing interval when none specified', function () {
+        $client = $this->createStub(Client::class);
+        $session = new Session('s1', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+
+        $session->addSubscription(1);
+
+        expect($session->getMinPublishingInterval())->toBe(0.5);
+    });
+
+    it('returns fallback after removing all subscriptions', function () {
+        $client = $this->createStub(Client::class);
+        $session = new Session('s1', $client, 'opc.tcp://localhost:4840', [], microtime(true));
+
+        $session->addSubscription(1, 250.0);
+        $session->removeSubscription(1);
+
+        expect($session->getMinPublishingInterval())->toBe(0.5);
+    });
+
 });
