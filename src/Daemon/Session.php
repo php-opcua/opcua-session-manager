@@ -11,8 +11,11 @@ use PhpOpcua\Client\Client;
  */
 class Session
 {
-    /** @var int[] */
+    /** @var array<int, int> */
     private array $subscriptionIds = [];
+
+    /** @var array<int, float> subscriptionId => publishingInterval in milliseconds */
+    private array $subscriptionIntervals = [];
 
     /**
      * @param string $id
@@ -50,11 +53,13 @@ class Session
 
     /**
      * @param int $subscriptionId
+     * @param float $publishingInterval The subscription's revised publishing interval in milliseconds.
      * @return void
      */
-    public function addSubscription(int $subscriptionId): void
+    public function addSubscription(int $subscriptionId, float $publishingInterval = 500.0): void
     {
         $this->subscriptionIds[$subscriptionId] = $subscriptionId;
+        $this->subscriptionIntervals[$subscriptionId] = $publishingInterval;
     }
 
     /**
@@ -63,7 +68,7 @@ class Session
      */
     public function removeSubscription(int $subscriptionId): void
     {
-        unset($this->subscriptionIds[$subscriptionId]);
+        unset($this->subscriptionIds[$subscriptionId], $this->subscriptionIntervals[$subscriptionId]);
     }
 
     /**
@@ -80,5 +85,21 @@ class Session
     public function hasSubscriptions(): bool
     {
         return count($this->subscriptionIds) > 0;
+    }
+
+    /**
+     * Return the minimum publishing interval across all active subscriptions, in seconds.
+     *
+     * Falls back to 0.5 seconds when no subscriptions are tracked.
+     *
+     * @return float
+     */
+    public function getMinPublishingInterval(): float
+    {
+        if (empty($this->subscriptionIntervals)) {
+            return 0.5;
+        }
+
+        return min($this->subscriptionIntervals) / 1000.0;
     }
 }

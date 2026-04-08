@@ -21,6 +21,7 @@ use PhpOpcua\Client\Types\TransferResult;
 use PhpOpcua\SessionManager\Exception\SessionNotFoundException;
 use PhpOpcua\SessionManager\Serialization\TypeSerializer;
 use InvalidArgumentException;
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Psr\SimpleCache\CacheInterface;
@@ -89,6 +90,7 @@ class CommandHandler
 
     private TypeSerializer $serializer;
     private LoggerInterface $clientLogger;
+    private ?AutoPublisher $autoPublisher = null;
 
     /**
      * @param SessionStore $store
@@ -96,17 +98,33 @@ class CommandHandler
      * @param ?array $allowedCertDirs
      * @param ?LoggerInterface $clientLogger Logger to inject into each OPC UA Client created by the daemon.
      * @param ?CacheInterface $clientCache Cache driver to inject into each OPC UA Client created by the daemon.
+     * @param ?EventDispatcherInterface $clientEventDispatcher PSR-14 event dispatcher to inject into each OPC UA Client.
      */
     public function __construct(
-        private readonly SessionStore    $store,
-        private readonly int             $maxSessions = 100,
-        private readonly ?array          $allowedCertDirs = null,
-        ?LoggerInterface                 $clientLogger = null,
-        private readonly ?CacheInterface $clientCache = null,
+        private readonly SessionStore              $store,
+        private readonly int                       $maxSessions = 100,
+        private readonly ?array                    $allowedCertDirs = null,
+        ?LoggerInterface                           $clientLogger = null,
+        private readonly ?CacheInterface           $clientCache = null,
+        private readonly ?EventDispatcherInterface $clientEventDispatcher = null,
     )
     {
         $this->serializer = new TypeSerializer();
         $this->clientLogger = $clientLogger ?? new NullLogger();
+    }
+
+    /**
+     * Set the auto-publisher instance for automatic subscription publishing.
+     *
+     * When set, the command handler triggers auto-publish start/stop on subscription
+     * lifecycle changes and blocks manual publish() calls for active sessions.
+     *
+     * @param AutoPublisher $autoPublisher
+     * @return void
+     */
+    public function setAutoPublisher(AutoPublisher $autoPublisher): void
+    {
+        $this->autoPublisher = $autoPublisher;
     }
 
     /**
@@ -159,6 +177,10 @@ class CommandHandler
         $this->validateCertPaths($config);
 
         $builder = ClientBuilder::create(logger: $this->clientLogger);
+
+        if ($this->clientEventDispatcher !== null) {
+            $builder->setEventDispatcher($this->clientEventDispatcher);
+        }
 
         if ($this->clientCache !== null) {
             $builder->setCache($this->clientCache);
@@ -257,6 +279,14 @@ class CommandHandler
             return $this->error('forbidden_method', "Method not allowed: {$method}");
         }
 
+        if ($method === 'publish' && $this->autoPublisher?->isActive($sessionId)) {
+            return $this->error(
+                'auto_publish_active',
+                'Manual publish() is not available while auto-publish is active. '
+                . 'Notifications are delivered via the configured EventDispatcher.',
+            );
+        }
+
         $session = $this->store->get($sessionId);
         $session->touch();
 
@@ -278,10 +308,12 @@ class CommandHandler
     }
 
     /**
+     * Attempt to recover a broken session by reconnecting and transferring subscriptions.
+     *
      * @param Session $session
-     * @return bool
+     * @return bool True if the session was recovered, false otherwise.
      */
-    private function attemptSessionRecovery(Session $session): bool
+    public function attemptSessionRecovery(Session $session): bool
     {
         $this->clientLogger->warning('Connection lost for session {id}, attempting recovery', ['id' => $session->id]);
 
@@ -371,11 +403,102 @@ class CommandHandler
     private function trackSubscriptionChanges(Session $session, string $method, array $args, mixed $result): void
     {
         if ($method === 'createSubscription' && $result instanceof SubscriptionResult) {
-            $session->addSubscription($result->subscriptionId);
+            $hadSubscriptions = $session->hasSubscriptions();
+            $session->addSubscription($result->subscriptionId, $result->revisedPublishingInterval);
+
+            if ($this->autoPublisher !== null && !$hadSubscriptions) {
+                $this->autoPublisher->startSession($session->id);
+            }
         }
 
         if ($method === 'deleteSubscription' && is_int($result) && $result === 0 && isset($args[0])) {
             $session->removeSubscription((int)$args[0]);
+
+            if ($this->autoPublisher !== null && !$session->hasSubscriptions()) {
+                $this->autoPublisher->stopSession($session->id);
+            }
+        }
+    }
+
+    /**
+     * Auto-connect a session with pre-configured subscriptions and monitored items.
+     *
+     * Opens a new session to the given endpoint, creates subscriptions, and registers
+     * monitored items and event monitored items as specified. Subscription tracking
+     * (and auto-publish, if configured) is wired up automatically.
+     *
+     * @param string $endpoint The OPC UA endpoint URL.
+     * @param array $config Connection configuration in daemon format.
+     * @param array $subscriptions Subscription definitions with monitored_items and event_monitored_items.
+     * @return string|null The session ID, or null if connection failed.
+     */
+    public function autoConnectSession(string $endpoint, array $config, array $subscriptions): ?string
+    {
+        $result = $this->handleOpen(['endpointUrl' => $endpoint, 'config' => $config]);
+        if (!$result['success']) {
+            return null;
+        }
+
+        $sessionId = $result['data']['sessionId'];
+        $session = $this->store->get($sessionId);
+
+        foreach ($subscriptions as $subConfig) {
+            $subResult = $session->client->createSubscription(
+                publishingInterval: (float) ($subConfig['publishing_interval'] ?? 500.0),
+                lifetimeCount: (int) ($subConfig['lifetime_count'] ?? 2400),
+                maxKeepAliveCount: (int) ($subConfig['max_keep_alive_count'] ?? 10),
+                maxNotificationsPerPublish: (int) ($subConfig['max_notifications_per_publish'] ?? 0),
+                publishingEnabled: true,
+                priority: (int) ($subConfig['priority'] ?? 0),
+            );
+
+            $this->trackSubscriptionChanges($session, 'createSubscription', [], $subResult);
+
+            $this->createAutoConnectMonitoredItems($session, $subResult->subscriptionId, $subConfig);
+            $this->createAutoConnectEventMonitoredItems($session, $subResult->subscriptionId, $subConfig);
+        }
+
+        return $sessionId;
+    }
+
+    /**
+     * @param Session $session
+     * @param int $subscriptionId
+     * @param array $subConfig
+     * @return void
+     */
+    private function createAutoConnectMonitoredItems(Session $session, int $subscriptionId, array $subConfig): void
+    {
+        if (empty($subConfig['monitored_items'])) {
+            return;
+        }
+
+        $items = array_map(fn(array $item) => [
+            'nodeId' => $item['node_id'],
+            'attributeId' => $item['attribute_id'] ?? 13,
+            'samplingInterval' => $item['sampling_interval'] ?? 250.0,
+            'queueSize' => $item['queue_size'] ?? 1,
+            'clientHandle' => $item['client_handle'] ?? 0,
+        ], $subConfig['monitored_items']);
+
+        $session->client->createMonitoredItems($subscriptionId, $items);
+    }
+
+    /**
+     * @param Session $session
+     * @param int $subscriptionId
+     * @param array $subConfig
+     * @return void
+     */
+    private function createAutoConnectEventMonitoredItems(Session $session, int $subscriptionId, array $subConfig): void
+    {
+        foreach ($subConfig['event_monitored_items'] ?? [] as $eventItem) {
+            $session->client->createEventMonitoredItem(
+                $subscriptionId,
+                $eventItem['node_id'],
+                $eventItem['select_fields'] ?? ['EventId', 'EventType', 'SourceName', 'Time', 'Message', 'Severity'],
+                $eventItem['client_handle'] ?? 1,
+            );
         }
     }
 

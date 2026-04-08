@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PhpOpcua\SessionManager\Daemon;
 
+use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Psr\SimpleCache\CacheInterface;
@@ -27,9 +28,13 @@ class SessionManagerDaemon
     private CommandHandler $handler;
     private LoopInterface $loop;
     private ?UnixServer $server = null;
+    private ?AutoPublisher $autoPublisher = null;
     private string $pidFilePath;
     private int $activeConnections = 0;
     private LoggerInterface $logger;
+
+    /** @var array<string, array{endpoint: string, config: array, subscriptions: array}> */
+    private array $autoConnections = [];
 
     /**
      * @param string $socketPath Path to the Unix socket file.
@@ -41,6 +46,8 @@ class SessionManagerDaemon
      * @param ?array $allowedCertDirs Restrict certificate paths to these directories, or null for no restriction.
      * @param ?LoggerInterface $logger Logger for daemon events. Also injected into each OPC UA Client.
      * @param ?CacheInterface $clientCache Cache driver injected into each OPC UA Client created by the daemon.
+     * @param ?EventDispatcherInterface $clientEventDispatcher PSR-14 event dispatcher injected into each OPC UA Client.
+     * @param bool $autoPublish When true and an event dispatcher is provided, the daemon automatically calls publish() for sessions with active subscriptions.
      */
     public function __construct(
         private readonly string  $socketPath,
@@ -52,6 +59,8 @@ class SessionManagerDaemon
         private readonly ?array  $allowedCertDirs = null,
         ?LoggerInterface         $logger = null,
         ?CacheInterface          $clientCache = null,
+        private readonly ?EventDispatcherInterface $clientEventDispatcher = null,
+        private readonly bool    $autoPublish = false,
     )
     {
         $this->logger = $logger ?? new NullLogger();
@@ -62,9 +71,24 @@ class SessionManagerDaemon
             $this->allowedCertDirs,
             $this->logger,
             $clientCache,
+            $this->clientEventDispatcher,
         );
         $this->loop = Loop::get();
         $this->pidFilePath = $this->socketPath . '.pid';
+    }
+
+    /**
+     * Register connections to be auto-connected when the daemon starts.
+     *
+     * Each entry must have 'endpoint', 'config', and 'subscriptions' keys. Connections
+     * are established on the first event loop tick after the daemon starts.
+     *
+     * @param array<string, array{endpoint: string, config: array, subscriptions: array}> $connections
+     * @return void
+     */
+    public function autoConnect(array $connections): void
+    {
+        $this->autoConnections = $connections;
     }
 
     /**
@@ -177,6 +201,12 @@ class SessionManagerDaemon
         ]);
         $this->logger->info('Socket permissions: {mode}', ['mode' => decoct($this->socketMode)]);
 
+        $this->setupAutoPublisher();
+
+        if (!empty($this->autoConnections)) {
+            $this->loop->futureTick(fn() => $this->processAutoConnections());
+        }
+
         $this->loop->run();
     }
 
@@ -184,6 +214,7 @@ class SessionManagerDaemon
     {
         $expired = $this->store->getExpired($this->timeout);
         foreach ($expired as $session) {
+            $this->autoPublisher?->stopSession($session->id);
             try {
                 $session->client->disconnect();
             } catch (Throwable) {
@@ -199,6 +230,8 @@ class SessionManagerDaemon
     private function shutdown(): void
     {
         $this->logger->info('Shutting down...');
+
+        $this->autoPublisher?->stopAll();
 
         foreach ($this->store->all() as $session) {
             try {
@@ -220,6 +253,46 @@ class SessionManagerDaemon
         $this->releasePidLock();
 
         $this->loop->stop();
+    }
+
+    private function setupAutoPublisher(): void
+    {
+        if (!$this->autoPublish || $this->clientEventDispatcher === null) {
+            return;
+        }
+
+        $this->autoPublisher = new AutoPublisher(
+            store: $this->store,
+            loop: $this->loop,
+            logger: $this->logger,
+            recoveryCallback: fn(Session $session) => $this->handler->attemptSessionRecovery($session),
+        );
+        $this->handler->setAutoPublisher($this->autoPublisher);
+        $this->logger->info('Auto-publish enabled');
+    }
+
+    private function processAutoConnections(): void
+    {
+        foreach ($this->autoConnections as $name => $connection) {
+            try {
+                $sessionId = $this->handler->autoConnectSession(
+                    $connection['endpoint'],
+                    $connection['config'],
+                    $connection['subscriptions'],
+                );
+                $this->logger->info($sessionId !== null
+                    ? 'Auto-connected "{name}" (session: {id})'
+                    : 'Auto-connect failed for "{name}"',
+                    ['name' => $name, 'id' => $sessionId],
+                );
+            } catch (Throwable $e) {
+                $this->logger->error('Auto-connect failed for "{name}": {msg}', [
+                    'name' => $name,
+                    'msg' => $e->getMessage(),
+                ]);
+            }
+        }
+        $this->autoConnections = [];
     }
 
     private function setupSignalHandlers(): void
