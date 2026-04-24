@@ -125,7 +125,7 @@ describe('CommandHandler Security', function () {
 
     describe('Credential stripping', function () {
 
-        it('strips password from list output', function () {
+        it('strips password and username from list output', function () {
             $config = [
                 'username' => 'admin',
                 'password' => 'secret123',
@@ -140,8 +140,7 @@ describe('CommandHandler Security', function () {
             expect($result['success'])->toBeTrue();
             $sessionConfig = $result['data']['sessions'][0]['config'];
             expect($sessionConfig)->not->toHaveKey('password');
-            expect($sessionConfig)->toHaveKey('username');
-            expect($sessionConfig['username'])->toBe('admin');
+            expect($sessionConfig)->not->toHaveKey('username');
             expect($sessionConfig)->toHaveKey('securityPolicy');
         });
 

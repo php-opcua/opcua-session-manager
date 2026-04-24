@@ -118,7 +118,9 @@ final readonly class SessionConfig
 
     /**
      * Return a copy of this config with {@see self::SENSITIVE_FIELDS} nulled
-     * out, suitable for logging and for the session-lookup cache key.
+     * out, suitable for the session-lookup cache key. `username` is preserved
+     * here (part of session identity); user-facing stripping lives in
+     * {@see CommandHandler::sanitizeConfig()}.
      *
      * @return self
      */

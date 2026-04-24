@@ -18,6 +18,7 @@ use PhpOpcua\SessionManager\Serialization\BuiltInParamDeserializer;
 use PhpOpcua\SessionManager\Serialization\ParamDeserializerRegistry;
 use PhpOpcua\SessionManager\Serialization\TypeSerializer;
 use InvalidArgumentException;
+use ReflectionClass;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
@@ -83,6 +84,7 @@ class CommandHandler
         'clientKeyPath',
         'userKeyPath',
         'caCertPath',
+        'username',
     ];
 
     private TypeSerializer $serializer;
@@ -181,7 +183,7 @@ class CommandHandler
             return $this->error('session_not_found', $e->getMessage());
         } catch (Throwable $e) {
             return $this->error(
-                basename(str_replace('\\', '/', get_class($e))),
+                (new ReflectionClass($e))->getShortName(),
                 $this->sanitizeErrorMessage($e->getMessage()),
             );
         }

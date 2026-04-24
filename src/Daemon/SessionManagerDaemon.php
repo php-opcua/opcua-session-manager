@@ -25,6 +25,7 @@ class SessionManagerDaemon
     public const VERSION = '4.3.0';
 
     private const MAX_BUFFER_SIZE = 1_048_576;
+    private const MAX_FRAME_BYTES = 65_536;
     private const IPC_CONNECTION_TIMEOUT = 30;
     private const MAX_CONCURRENT_CONNECTIONS = 50;
 
@@ -196,7 +197,14 @@ class SessionManagerDaemon
             unlink($unixPath);
         }
 
-        $this->server = new SocketServer($this->resolveListenUri(), [], $this->loop);
+        $previousUmask = $unixPath !== null ? umask(0077) : null;
+        try {
+            $this->server = new SocketServer($this->resolveListenUri(), [], $this->loop);
+        } finally {
+            if ($previousUmask !== null) {
+                umask($previousUmask);
+            }
+        }
 
         if ($unixPath !== null) {
             chmod($unixPath, $this->socketMode);
@@ -239,6 +247,13 @@ class SessionManagerDaemon
 
                 $newlinePos = strpos($buffer, "\n");
                 if ($newlinePos === false) {
+                    return;
+                }
+
+                if ($newlinePos > self::MAX_FRAME_BYTES) {
+                    $response = ['success' => false, 'error' => ['type' => 'payload_too_large', 'message' => 'Request frame exceeds maximum size of ' . self::MAX_FRAME_BYTES . ' bytes']];
+                    $connection->write(json_encode($response) . "\n");
+                    $connection->end();
                     return;
                 }
 

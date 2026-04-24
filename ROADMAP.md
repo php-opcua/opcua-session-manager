@@ -10,6 +10,10 @@
 - [x] Added `--version` / `-v` flag on the daemon binary (`SessionManagerDaemon::VERSION`).
 - [x] Propagated `ServiceUnsupportedException` across the IPC boundary as a distinct subclass, so `catch (ServiceUnsupportedException $e)` in user code works without string-matching.
 - [x] Documentation sweep — doc/ and README version mentions now read `^4.3.0`; stale "v4.0.0 DTOs" wording replaced with "module DTOs" (DTOs moved to their module namespaces in v4.2.0).
+- [x] Extracted `bin/opcua-session-manager` argv parser into `src/Cli/ArgvParser` (unit-testable; reports missing-value errors instead of silently dropping them).
+- [x] Added `tests/Unit/ManagedClientTcpTest.php` to give cross-OS coverage to the ManagedClient IPC error-mapping path (`ManagedClientIpcTest` is still Unix-only via `->skipOnWindows()`).
+- [x] Replaced a fragile `basename(str_replace('\\', '/', …))` short-class-name hack in `CommandHandler` with `ReflectionClass::getShortName()`.
+- [x] **Security audit findings addressed**: socket-file permission race closed via `umask(0077)` around `SocketServer` bind; `username` stripped from the `list` IPC response (session-lookup cache key unchanged); per-frame 64 KiB cap added on inbound NDJSON.
 
 ## v4.2.0
 
