@@ -1,6 +1,6 @@
 # Type Serialization
 
-`TypeSerializer` converts OPC UA types and v4.0.0 DTOs into JSON-safe arrays for IPC transport, and reconstructs them on the other side.
+`TypeSerializer` converts OPC UA types and module DTOs into JSON-safe arrays for IPC transport, and reconstructs them on the other side.
 
 ## Conversion Table
 
@@ -23,7 +23,7 @@
 | scalars | as-is |
 | arrays | recursively serialized |
 
-## v4.0.0 DTO Conversion
+## Module DTO Conversion
 
 | DTO | JSON Representation |
 |---|---|

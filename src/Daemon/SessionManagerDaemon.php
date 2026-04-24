@@ -22,6 +22,8 @@ use Throwable;
  */
 class SessionManagerDaemon
 {
+    public const VERSION = '4.3.0';
+
     private const MAX_BUFFER_SIZE = 1_048_576;
     private const IPC_CONNECTION_TIMEOUT = 30;
     private const MAX_CONCURRENT_CONNECTIONS = 50;

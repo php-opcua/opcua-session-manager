@@ -31,7 +31,7 @@
   ],
   "require": {
     "php": "^8.2",
-    "php-opcua/opcua-client": "^4.2.0",
+    "php-opcua/opcua-client": "^4.3.0",
     "react/event-loop": "^1.5",
     "react/socket": "^1.16",
     "psr/log": "^3.0",

@@ -75,7 +75,7 @@ SessionManagerDaemon (ReactPHP)
     ├── TypeSerializer (JSON ↔ OPC UA types)
     │
     ▼
-OPC UA Client (opcua-client v4.0.0)
+OPC UA Client (opcua-client v4.3.0)
     │ TCP binary protocol
     ▼
 OPC UA Server

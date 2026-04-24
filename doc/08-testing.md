@@ -52,7 +52,7 @@ Without the exclusion, reported coverage would be ~82% instead of the actual ~99
 
 | File | Tests | Covers |
 |------|-------|--------|
-| `TypeSerializerTest.php` | 40+ | All type serialization/deserialization roundtrips including v4.0.0 DTOs |
+| `TypeSerializerTest.php` | 40+ | All type serialization/deserialization roundtrips including module DTOs |
 | `SessionStoreTest.php` | 8 | Session CRUD, expiration, touching |
 | `ManagedClientConfigTest.php` | 17 | Configuration setters/getters, logger, cache, extension object repository |
 | `CommandHandlerSecurityTest.php` | 18 | Method whitelist, setter rejection, credential stripping, max sessions, cert validation |

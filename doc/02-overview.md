@@ -62,7 +62,7 @@ Processes IPC commands inside the daemon. Enforces a method whitelist (37 allowe
 
 ### TypeSerializer
 
-Bidirectional JSON serialization for all OPC UA types and v4.0.0 DTOs. Handles `NodeId`, `DataValue`, `Variant`, `ReferenceDescription`, `SubscriptionResult`, `CallResult`, `BrowseResultSet`, `PublishResult`, `BrowsePathResult`, `TransferResult`, `MonitoredItemResult`, and all scalar/array types.
+Bidirectional JSON serialization for all OPC UA types and module DTOs. Handles `NodeId`, `DataValue`, `Variant`, `ReferenceDescription`, `SubscriptionResult`, `CallResult`, `BrowseResultSet`, `PublishResult`, `BrowsePathResult`, `TransferResult`, `MonitoredItemResult`, and all scalar/array types.
 
 ### SessionStore
 
@@ -73,4 +73,4 @@ In-memory registry of active sessions with expiration support.
 - PHP >= 8.2
 - `ext-openssl`
 - `ext-pcntl` (recommended, for signal handling)
-- [`php-opcua/opcua-client`](https://github.com/php-opcua/opcua-client) ^4.0
+- [`php-opcua/opcua-client`](https://github.com/php-opcua/opcua-client) ^4.3.0

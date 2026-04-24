@@ -13,6 +13,7 @@ use PhpOpcua\Client\Builder\WriteMultiBuilder;
 use PhpOpcua\Client\Event\NullEventDispatcher;
 use PhpOpcua\Client\Exception\ConnectionException;
 use PhpOpcua\Client\Exception\ServiceException;
+use PhpOpcua\Client\Exception\ServiceUnsupportedException;
 use PhpOpcua\Client\OpcUaClientInterface;
 use PhpOpcua\Client\Repository\ExtensionObjectRepository;
 use PhpOpcua\Client\Security\SecurityMode;
@@ -1368,6 +1369,7 @@ class ManagedClient implements OpcUaClientInterface
 
             throw match ($type) {
                 'ConnectionException' => new ConnectionException($message),
+                'ServiceUnsupportedException' => new ServiceUnsupportedException($message),
                 'ServiceException' => new ServiceException($message),
                 'session_not_found' => new ConnectionException("Session expired or not found: {$message}"),
                 default => new DaemonException("[{$type}] {$message}"),
@@ -1494,6 +1496,7 @@ class ManagedClient implements OpcUaClientInterface
      * @throws BadMethodCallException If the daemon's client does not have `addNodes` registered.
      * @throws ConnectionException
      * @throws ServiceException
+     * @throws ServiceUnsupportedException When the server does not implement the NodeManagement service set (`BadServiceUnsupported`).
      * @throws DaemonException
      */
     public function addNodes(array $nodesToAdd): array
@@ -1513,6 +1516,7 @@ class ManagedClient implements OpcUaClientInterface
      * @throws BadMethodCallException
      * @throws ConnectionException
      * @throws ServiceException
+     * @throws ServiceUnsupportedException
      * @throws DaemonException
      */
     public function deleteNodes(array $nodesToDelete): array
@@ -1532,6 +1536,7 @@ class ManagedClient implements OpcUaClientInterface
      * @throws BadMethodCallException
      * @throws ConnectionException
      * @throws ServiceException
+     * @throws ServiceUnsupportedException
      * @throws DaemonException
      */
     public function addReferences(array $referencesToAdd): array
@@ -1551,6 +1556,7 @@ class ManagedClient implements OpcUaClientInterface
      * @throws BadMethodCallException
      * @throws ConnectionException
      * @throws ServiceException
+     * @throws ServiceUnsupportedException
      * @throws DaemonException
      */
     public function deleteReferences(array $referencesToDelete): array

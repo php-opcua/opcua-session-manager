@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.3.0] - 2026-04-24
+
+### Changed
+
+- Bumped `php-opcua/opcua-client` from `^4.2.0` to `^4.3.0`.
+- Bumped CI test-server suite `uanetstandard-test-suite@v1.1.0` → `@v1.2.0`.
+- Documentation — realigned doc/ and README version mentions to `^4.3.0` and renamed stale "v4.0.0 DTOs" references to "module DTOs" (DTOs were relocated to their module namespaces in v4.2.0).
+
+### Added
+
+- `--version` / `-v` flag on `bin/opcua-session-manager` prints the daemon version. Version exposed as `SessionManagerDaemon::VERSION`.
+- `ServiceUnsupportedException` is now properly propagated through the IPC boundary. The daemon's error serializer already emits the short class name; the `ManagedClient` IPC decoder now recognises `ServiceUnsupportedException` and re-throws it as the correct subclass instead of degrading it to a generic `DaemonException`. Relevant whenever a server does not implement a requested service set (typical case: `NodeManagementModule` operations against UA-.NETStandard, which returns `BadServiceUnsupported`). `catch (ServiceUnsupportedException $e)` in user code now works as expected without string-matching on the message. Covered by a new regression test in `tests/Unit/ManagedClientIpcTest.php`.
+
+### Security
+
+- **Persistent cache hardening.** `opcua-client` v4.3.0 removed `unserialize()` from every cache code path in favour of JSON gated by an allowlist (`Cache\WireCacheCodec`). The daemon is long-running and its per-session caches persist across requests, so upgrade paths that share a cache backend across processes should flush it once on upgrade. No API change for the daemon itself — the new `CacheCodecInterface` is picked up automatically via the default `ClientBuilder`.
+
 ## [4.2.0] - 2026-04-17
 
 ### Changed

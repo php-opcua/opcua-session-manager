@@ -1,5 +1,16 @@
 # Roadmap
 
+## v4.3.0
+
+### Completed
+
+- [x] Bumped `php-opcua/opcua-client` from `^4.2.0` to `^4.3.0`.
+- [x] Bumped CI test-server suite `uanetstandard-test-suite@v1.1.0` → `@v1.2.0`.
+- [x] Flagged the persistent-cache security hardening from `opcua-client` v4.3.0 (`unserialize` → `WireCacheCodec` allowlist) — daemon picks it up automatically, users sharing a cache across processes should flush once on upgrade.
+- [x] Added `--version` / `-v` flag on the daemon binary (`SessionManagerDaemon::VERSION`).
+- [x] Propagated `ServiceUnsupportedException` across the IPC boundary as a distinct subclass, so `catch (ServiceUnsupportedException $e)` in user code works without string-matching.
+- [x] Documentation sweep — doc/ and README version mentions now read `^4.3.0`; stale "v4.0.0 DTOs" wording replaced with "module DTOs" (DTOs moved to their module namespaces in v4.2.0).
+
 ## v4.2.0
 
 ### Completed

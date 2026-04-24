@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use PhpOpcua\Client\Exception\ConnectionException;
 use PhpOpcua\Client\Exception\ServiceException;
+use PhpOpcua\Client\Exception\ServiceUnsupportedException;
 use PhpOpcua\Client\Types\BrowseDirection;
 use PhpOpcua\Client\Module\TranslateBrowsePath\BrowsePathResult;
 use PhpOpcua\Client\Module\Browse\BrowseResultSet;
@@ -115,6 +116,19 @@ describe('ManagedClient IPC', function () {
             try {
                 $client = connectFakeClient($daemon['socketPath']);
                 expect(fn() => $client->read('i=2259'))->toThrow(ServiceException::class, 'Bad node');
+            } finally {
+                stopFakeDaemon($daemon);
+            }
+        });
+
+        it('maps ServiceUnsupportedException from daemon preserving the subclass', function () {
+            $daemon = startFakeDaemon([
+                ['success' => false, 'error' => ['type' => 'ServiceUnsupportedException', 'message' => 'BadServiceUnsupported']],
+            ]);
+
+            try {
+                $client = connectFakeClient($daemon['socketPath']);
+                expect(fn() => $client->addNodes([]))->toThrow(ServiceUnsupportedException::class, 'BadServiceUnsupported');
             } finally {
                 stopFakeDaemon($daemon);
             }

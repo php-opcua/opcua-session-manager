@@ -14,7 +14,7 @@ composer require php-opcua/opcua-session-manager
 ```
 
 This pulls in:
-- [`php-opcua/opcua-client`](https://github.com/php-opcua/opcua-client) ^4.0 — the core OPC UA client
+- [`php-opcua/opcua-client`](https://github.com/php-opcua/opcua-client) ^4.3.0 — the core OPC UA client
 - `react/event-loop` ^1.5 — ReactPHP event loop for the daemon
 - `react/socket` ^1.16 — Unix socket server
 - `psr/log` ^3.0 — PSR-3 logging interface (interface-only, zero runtime code)

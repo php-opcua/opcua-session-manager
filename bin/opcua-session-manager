@@ -63,6 +63,10 @@ for ($i = 0; $i < count($args); $i++) {
         '--cache-driver' => $cacheDriver = $args[++$i] ?? $cacheDriver,
         '--cache-path' => $cachePath = $args[++$i] ?? $cachePath,
         '--cache-ttl' => $cacheTtl = (int) ($args[++$i] ?? $cacheTtl),
+        '--version', '-v' => (function () {
+            echo 'opcua-session-manager ' . SessionManagerDaemon::VERSION . "\n";
+            exit(0);
+        })(),
         '--help', '-h' => (function () {
             echo "Usage: opcua-session-manager [options]\n";
             echo "\n";
@@ -81,6 +85,7 @@ for ($i = 0; $i < count($args); $i++) {
             echo "  --cache-path <path>          Cache directory for file driver (required when --cache-driver=file)\n";
             echo "  --cache-ttl <seconds>        Cache TTL in seconds (default: 300)\n";
             echo "  --help, -h                   Show this help message\n";
+            echo "  --version, -v                Show the daemon version\n";
             echo "\n";
             echo "Environment variables:\n";
             echo "  OPCUA_AUTH_TOKEN             Auth token (highest priority, avoids /proc exposure)\n";
