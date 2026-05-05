@@ -91,3 +91,41 @@ describe('TransportFactory: introspection helpers', function () {
         expect(TransportFactory::toUnixPath('tcp://127.0.0.1:9990'))->toBeNull();
     });
 });
+
+describe('TransportFactory: assertUnixPathFits', function () {
+
+    it('accepts a comfortably short path', function () {
+        expect(fn () => TransportFactory::assertUnixPathFits('/tmp/opcua.sock'))
+            ->not->toThrow(DaemonException::class);
+    });
+
+    it('accepts a path right at the platform limit', function () {
+        $limit = PHP_OS_FAMILY === 'Darwin'
+            ? TransportFactory::MAX_UNIX_PATH_DARWIN
+            : TransportFactory::MAX_UNIX_PATH_LINUX;
+        $path = '/' . str_repeat('a', $limit - 2); // length = limit - 1 (the usable max)
+        expect(strlen($path))->toBe($limit - 1);
+        expect(fn () => TransportFactory::assertUnixPathFits($path))
+            ->not->toThrow(DaemonException::class);
+    });
+
+    it('rejects a path that would be silently truncated by the kernel', function () {
+        $limit = PHP_OS_FAMILY === 'Darwin'
+            ? TransportFactory::MAX_UNIX_PATH_DARWIN
+            : TransportFactory::MAX_UNIX_PATH_LINUX;
+        $path = '/' . str_repeat('a', $limit); // length = limit + 1 → over the usable max
+        expect(fn () => TransportFactory::assertUnixPathFits($path))
+            ->toThrow(DaemonException::class, 'Unix socket path is too long');
+    });
+
+    it('mentions the offending path in the error message', function () {
+        $path = '/' . str_repeat('x', 200);
+        try {
+            TransportFactory::assertUnixPathFits($path);
+            expect(false)->toBeTrue('expected DaemonException');
+        } catch (DaemonException $e) {
+            expect($e->getMessage())->toContain($path);
+            expect($e->getMessage())->toContain('OPCUA_SOCKET_PATH');
+        }
+    });
+});

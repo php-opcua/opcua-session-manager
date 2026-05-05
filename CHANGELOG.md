@@ -1,5 +1,20 @@
 # Changelog
 
+## [4.3.1] - 2026-05-05
+
+### Added
+
+- `TransportFactory::assertUnixPathFits(string $path)` — throws `DaemonException` when a Unix-socket path exceeds `sun_path` capacity (108 on Linux, 104 on Darwin). Replaces the silent kernel truncation that previously surfaced as a confusing `chmod(): No such file or directory`.
+- `TransportFactory::MAX_UNIX_PATH_LINUX` / `MAX_UNIX_PATH_DARWIN` constants.
+
+### Changed
+
+- `SessionManagerDaemon::run()` validates the socket path length before binding; the error message reports the offending length and points at `OPCUA_SOCKET_PATH`.
+
+### Tests
+
+- +4 unit tests in `TransportFactoryTest.php`;
+
 ## [4.3.0] - 2026-04-24
 
 ### Changed

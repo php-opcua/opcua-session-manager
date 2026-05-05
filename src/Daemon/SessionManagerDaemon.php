@@ -193,8 +193,11 @@ class SessionManagerDaemon
         $this->acquirePidLock();
 
         $unixPath = TransportFactory::toUnixPath($this->socketPath);
-        if ($unixPath !== null && file_exists($unixPath)) {
-            unlink($unixPath);
+        if ($unixPath !== null) {
+            TransportFactory::assertUnixPathFits($unixPath);
+            if (file_exists($unixPath)) {
+                unlink($unixPath);
+            }
         }
 
         $previousUmask = $unixPath !== null ? umask(0077) : null;

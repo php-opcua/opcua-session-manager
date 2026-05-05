@@ -27,6 +27,43 @@ final class TransportFactory
     public const DEFAULT_UNIX_PATH = '/tmp/opcua-session-manager.sock';
 
     /**
+     * Maximum byte length the kernel allocates for `sun_path` in
+     * `struct sockaddr_un`. Linux/Solaris use 108, BSD/macOS 104.
+     */
+    public const MAX_UNIX_PATH_LINUX = 108;
+    public const MAX_UNIX_PATH_DARWIN = 104;
+
+    /**
+     * Validate that a Unix-domain socket path fits within the platform's
+     * `sun_path` capacity.
+     *
+     * @param string $path Absolute filesystem path the daemon will bind to.
+     * @throws DaemonException If the path exceeds the platform-specific limit.
+     */
+    public static function assertUnixPathFits(string $path): void
+    {
+        $max = PHP_OS_FAMILY === 'Darwin'
+            ? self::MAX_UNIX_PATH_DARWIN
+            : self::MAX_UNIX_PATH_LINUX;
+        
+        $usable = $max - 1;
+        $length = strlen($path);
+
+        if ($length > $usable) {
+            throw new DaemonException(sprintf(
+                'Unix socket path is too long: %d bytes, but the %s kernel limits sun_path to %d bytes (usable %d). '
+                . 'The kernel silently truncates longer paths, which breaks chmod() and reconnect. '
+                . 'Set OPCUA_SOCKET_PATH (or pass --socket) to a shorter path, e.g. /tmp/opcua-session.sock. Got: %s',
+                $length,
+                PHP_OS_FAMILY,
+                $max,
+                $usable,
+                $path,
+            ));
+        }
+    }
+
+    /**
      * Build a {@see TransportInterface} for `$endpoint`.
      *
      * @param string $endpoint Endpoint URI (`unix://…`, `tcp://host:port`) or a scheme-less Unix path.
