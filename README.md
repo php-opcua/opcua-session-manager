@@ -367,17 +367,18 @@ OPCUA_AUTH_TOKEN=$(cat /etc/opcua/daemon.token) php bin/opcua-session-manager \
 
 ## Documentation
 
-| # | Document | Covers |
-|---|----------|--------|
-| 01 | [Introduction](doc/01-introduction.md) | Overview, requirements, quick start |
-| 02 | [Overview & Architecture](doc/02-overview.md) | Problem, solution, components |
-| 03 | [Installation](doc/03-installation.md) | Requirements, Composer setup, project structure |
-| 04 | [Daemon](doc/04-daemon.md) | CLI options, security, systemd/Supervisor, internals |
-| 05 | [ManagedClient API](doc/05-managed-client.md) | Full API reference, configuration, session persistence |
-| 06 | [IPC Protocol](doc/06-ipc-protocol.md) | Transport, commands, authentication, wire format |
-| 07 | [Type Serialization](doc/07-type-serialization.md) | JSON conversion for all OPC UA types and DTOs |
-| 08 | [Testing](doc/08-testing.md) | Test infrastructure, helper class, running tests |
-| 09 | [Examples](doc/09-examples.md) | Complete code examples for all features |
+Full documentation is available in [`docs/`](docs/index.md). Highlights:
+
+| Section | Covers |
+|---------|--------|
+| **Getting started** — [Overview](docs/overview.md) · [Installation](docs/getting-started/installation.md) · [Quick start](docs/getting-started/quick-start.md) · [Why a session manager](docs/getting-started/why-a-session-manager.md) | Concepts, install, motivation |
+| **Daemon** — [Starting](docs/daemon/starting.md) · [Configuration](docs/daemon/configuration.md) · [Transports](docs/daemon/transports.md) · [Authentication](docs/daemon/authentication.md) · [Security hardening](docs/daemon/security-hardening.md) · [Logging & cache](docs/daemon/logging-and-cache.md) · [Auto-connect](docs/daemon/auto-connect.md) · [Auto-publish](docs/daemon/auto-publish.md) · [As a service](docs/daemon/running-as-a-service.md) | CLI, config, transports, systemd/Supervisor |
+| **ManagedClient** — [Overview](docs/managed-client/overview.md) · [Opening & closing](docs/managed-client/opening-and-closing.md) · [Session reuse](docs/managed-client/session-reuse.md) · [Differences from direct client](docs/managed-client/differences-from-direct-client.md) | API surface, lifecycle, session persistence |
+| **IPC** — [Overview](docs/ipc/overview.md) · [Envelope & framing](docs/ipc/envelope-and-framing.md) · [Commands](docs/ipc/commands.md) · [Type serialization](docs/ipc/type-serialization.md) · [Direct interaction](docs/ipc/direct-interaction.md) | Wire protocol, commands, JSON conversion |
+| **Extensibility** — [Custom param deserializer](docs/extensibility/custom-param-deserializer.md) · [Third-party modules](docs/extensibility/third-party-modules.md) | Plugin points |
+| **Testing** — [Overview](docs/testing/overview.md) | Test infrastructure |
+| **Reference** — [Daemon CLI](docs/reference/daemon-cli.md) · [ManagedClient API](docs/reference/managed-client-api.md) · [IPC commands](docs/reference/ipc-commands.md) · [Exceptions](docs/reference/exceptions.md) | Full API reference |
+| **Recipes** — [Upgrading to v4.3](docs/recipes/upgrading-to-v4.3.md) · [Persistent sessions in Laravel](docs/recipes/persistent-sessions-laravel.md) · [Auto-publish pattern](docs/recipes/auto-publish-pattern.md) · [Healthcheck & monitoring](docs/recipes/healthcheck-and-monitoring.md) · [ECC secure connection](docs/recipes/ecc-secure-connection.md) · [Recovery & reconnect](docs/recipes/recovery-and-reconnect.md) · [Debugging with netcat](docs/recipes/debugging-with-netcat.md) | Task-oriented walkthroughs |
 
 ## Testing
 

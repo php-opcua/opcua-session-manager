@@ -1,0 +1,46 @@
+# Documentation Index
+
+- Getting started
+  - [Overview](./overview.md)
+  - [Installation](./getting-started/installation.md)
+  - [Quick start](./getting-started/quick-start.md)
+  - [Why a session manager](./getting-started/why-a-session-manager.md)
+- Daemon
+  - [Starting the daemon](./daemon/starting.md)
+  - [Configuration](./daemon/configuration.md)
+  - [Transports](./daemon/transports.md)
+  - [Authentication](./daemon/authentication.md)
+  - [Security hardening](./daemon/security-hardening.md)
+  - [Logging and cache](./daemon/logging-and-cache.md)
+  - [Auto-connect](./daemon/auto-connect.md)
+  - [Auto-publish](./daemon/auto-publish.md)
+  - [Running as a service](./daemon/running-as-a-service.md)
+- ManagedClient
+  - [Overview](./managed-client/overview.md)
+  - [Opening and closing](./managed-client/opening-and-closing.md)
+  - [Session reuse](./managed-client/session-reuse.md)
+  - [Differences from the direct client](./managed-client/differences-from-direct-client.md)
+- IPC
+  - [Overview](./ipc/overview.md)
+  - [Envelope and framing](./ipc/envelope-and-framing.md)
+  - [Commands](./ipc/commands.md)
+  - [Type serialization](./ipc/type-serialization.md)
+  - [Direct interaction](./ipc/direct-interaction.md)
+- Extensibility
+  - [Custom param deserializer](./extensibility/custom-param-deserializer.md)
+  - [Third-party modules](./extensibility/third-party-modules.md)
+- Testing
+  - [Overview](./testing/overview.md)
+- Reference
+  - [Daemon CLI](./reference/daemon-cli.md)
+  - [ManagedClient API](./reference/managed-client-api.md)
+  - [IPC commands](./reference/ipc-commands.md)
+  - [Exceptions](./reference/exceptions.md)
+- Recipes
+  - [Upgrading to v4.3](./recipes/upgrading-to-v4.3.md)
+  - [Persistent sessions in Laravel](./recipes/persistent-sessions-laravel.md)
+  - [Auto-publish pattern](./recipes/auto-publish-pattern.md)
+  - [Healthcheck and monitoring](./recipes/healthcheck-and-monitoring.md)
+  - [Secure connection with ECC](./recipes/ecc-secure-connection.md)
+  - [Recovery and reconnect](./recipes/recovery-and-reconnect.md)
+  - [Debugging with netcat](./recipes/debugging-with-netcat.md)

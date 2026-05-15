@@ -91,7 +91,7 @@ Auth priority: OPCUA_AUTH_TOKEN env > --auth-token-file > --auth-token
 
 ### Running as Service
 
-systemd or Supervisor supported. See doc/daemon.md for examples.
+systemd or Supervisor supported. See docs/daemon/running-as-a-service.md for examples.
 
 ### Auto-Publish
 
