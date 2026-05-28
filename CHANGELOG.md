@@ -1,5 +1,63 @@
 # Changelog
 
+## [4.4.0] - 2026-05-28
+
+Lock-step release with `php-opcua/opcua-client` v4.4.0. Surfaces the three new module families the core introduced — HistoryUpdate, File Transfer, Aggregate — as explicit typed methods on `ManagedClient`, so IDE autocomplete and static analysis see them the same way they see the rest of the OPC UA service set. Daemon-side, every new method is reachable via the existing `invoke` IPC command — no protocol change.
+
+### Changed
+
+- Bumped `php-opcua/opcua-client` from `^4.3.0` to `^4.4.0`.
+- Bumped CI test-server suite `uanetstandard-test-suite@v1.2.0` → `@v1.5.0` (adds HTTPS Binary on `:4852`, the Security Key Service on `:4851`, ECC NIST / Brainpool servers on `:4848` / `:4849`, and the open62541-backed `historizing` server consumed by the new HistoryUpdate integration tests).
+- `SessionManagerDaemon::VERSION` bumped to `4.4.0`.
+- Documentation — `composer.json` `support.docs` now points at `tree/master/docs` (the directory has been called `docs/` since v4.0).
+
+### Added — HistoryUpdate IPC surface
+
+9 new explicit methods on `ManagedClient`, each a thin typed wrapper around `invokeRemote()` matching the signatures the core added to `OpcUaClientInterface`:
+
+- `historyInsertData(NodeId|string, DataValue[]): int[]`
+- `historyReplaceData(NodeId|string, DataValue[]): int[]`
+- `historyUpdateData(NodeId|string, DataValue[]): int[]`
+- `historyDeleteRawModified(NodeId|string, DateTimeImmutable $start, DateTimeImmutable $end, bool $isDeleteModified = false): int`
+- `historyDeleteAtTime(NodeId|string, DateTimeImmutable[]): int[]`
+- `historyInsertEvent(NodeId|string, string[] $selectFields, array $eventData): int[]`
+- `historyReplaceEvent(NodeId|string, string[] $selectFields, array $eventData): int[]`
+- `historyUpdateEvent(NodeId|string, string[] $selectFields, array $eventData): int[]`
+- `historyDeleteEvent(NodeId|string, string[] $eventIds): int[]`
+
+The wire-side type registry decodes the corresponding result DTOs automatically (`HistoryUpdateResult` is `WireSerializable` and registered by `HistoryModule::registerWireTypes()` on the daemon).
+
+### Added — File Transfer IPC surface
+
+10 new explicit methods covering OPC UA Part 5 §C.2 (`FileType`) and §C.3 (`FileDirectoryType`):
+
+- `openFile(NodeId|string, OpenFileMode|int): int`
+- `closeFile(NodeId|string, int $fileHandle): void`
+- `readFile(NodeId|string, int $fileHandle, int $length): string`
+- `writeFile(NodeId|string, int $fileHandle, string $data): void`
+- `getFilePosition(NodeId|string, int $fileHandle): int`
+- `setFilePosition(NodeId|string, int $fileHandle, int $position): void`
+- `createDirectory(NodeId|string, string $directoryName): NodeId`
+- `createFileInDirectory(NodeId|string, string $fileName, bool $requestFileOpen = false): CreateFileResult`
+- `deleteFileSystemObject(NodeId|string, NodeId|string $targetNodeId): void`
+- `moveOrCopyFileSystemObject(NodeId|string, NodeId|string $sourceNodeId, NodeId|string $targetDirectoryNodeId, bool $createCopy, string $newName = ''): NodeId`
+
+The `OpenFileMode` enum and the `CreateFileResult` DTO are accepted across the IPC boundary because the core's `FileTransferModule::registerWireTypes()` registers both with the wire allowlist; the daemon's `describe` response advertises them so `ManagedClient` decodes them into the right PHP types.
+
+### Added — Aggregate IPC surface
+
+2 new explicit methods. The core exposes these via `Client::__call()` rather than `OpcUaClientInterface` — surfacing them explicitly on `ManagedClient` matches the IDE ergonomics of every other operation:
+
+- `aggregate(DataValue[] $rawValues, DateTimeImmutable $start, DateTimeImmutable $end, float $intervalMs, AggregateFunction, ?AggregateOptions): DataValue[]`
+- `historyAggregate(NodeId|string, DateTimeImmutable $start, DateTimeImmutable $end, float $intervalMs, AggregateFunction, ?AggregateOptions): DataValue[]`
+
+`AggregateFunction` (enum) and `AggregateOptions` (DTO) cross the wire via the same registry mechanism — both are advertised by the daemon's `describe`.
+
+### Compatibility
+
+- **IPC protocol unchanged.** Older `ManagedClient` instances (≤ 4.3.1) continue to work against a 4.4.0 daemon — they reach the new methods through `__call()`. New typed methods exist purely for IDE / static-analysis ergonomics.
+- **Daemon ↔ client version skew.** A 4.4.0 `ManagedClient` against a 4.3.x daemon raises `BadMethodCallException` from `invokeRemote()` because the older daemon's `describe` does not advertise the new method names. Upgrade order: daemon first.
+
 ## [4.3.1] - 2026-05-05
 
 ### Added

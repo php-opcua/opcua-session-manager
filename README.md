@@ -378,7 +378,7 @@ Full documentation is available in [`docs/`](docs/index.md). Highlights:
 | **Extensibility** — [Custom param deserializer](docs/extensibility/custom-param-deserializer.md) · [Third-party modules](docs/extensibility/third-party-modules.md) | Plugin points |
 | **Testing** — [Overview](docs/testing/overview.md) | Test infrastructure |
 | **Reference** — [Daemon CLI](docs/reference/daemon-cli.md) · [ManagedClient API](docs/reference/managed-client-api.md) · [IPC commands](docs/reference/ipc-commands.md) · [Exceptions](docs/reference/exceptions.md) | Full API reference |
-| **Recipes** — [Upgrading to v4.3](docs/recipes/upgrading-to-v4.3.md) · [Persistent sessions in Laravel](docs/recipes/persistent-sessions-laravel.md) · [Auto-publish pattern](docs/recipes/auto-publish-pattern.md) · [Healthcheck & monitoring](docs/recipes/healthcheck-and-monitoring.md) · [ECC secure connection](docs/recipes/ecc-secure-connection.md) · [Recovery & reconnect](docs/recipes/recovery-and-reconnect.md) · [Debugging with netcat](docs/recipes/debugging-with-netcat.md) | Task-oriented walkthroughs |
+| **Recipes** — [Upgrading to v4.4](docs/recipes/upgrading-to-v4.4.md) · [Upgrading to v4.3](docs/recipes/upgrading-to-v4.3.md) · [Persistent sessions in Laravel](docs/recipes/persistent-sessions-laravel.md) · [Auto-publish pattern](docs/recipes/auto-publish-pattern.md) · [Healthcheck & monitoring](docs/recipes/healthcheck-and-monitoring.md) · [ECC secure connection](docs/recipes/ecc-secure-connection.md) · [Recovery & reconnect](docs/recipes/recovery-and-reconnect.md) · [Debugging with netcat](docs/recipes/debugging-with-netcat.md) | Task-oriented walkthroughs |
 
 ## Testing
 

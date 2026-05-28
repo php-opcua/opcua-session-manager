@@ -22,7 +22,7 @@ use Throwable;
  */
 class SessionManagerDaemon
 {
-    public const VERSION = '4.3.0';
+    public const VERSION = '4.4.0';
 
     private const MAX_BUFFER_SIZE = 1_048_576;
     private const MAX_FRAME_BYTES = 65_536;

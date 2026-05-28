@@ -25,6 +25,10 @@ use PhpOpcua\Client\Types\BrowseNode;
 use PhpOpcua\Client\Module\TranslateBrowsePath\BrowsePathResult;
 use PhpOpcua\Client\Module\Browse\BrowseResultSet;
 use PhpOpcua\Client\Types\BuiltinType;
+use PhpOpcua\Client\Module\Aggregate\AggregateFunction;
+use PhpOpcua\Client\Module\Aggregate\AggregateOptions;
+use PhpOpcua\Client\Module\FileTransfer\CreateFileResult;
+use PhpOpcua\Client\Module\FileTransfer\OpenFileMode;
 use PhpOpcua\Client\Module\NodeManagement\AddNodesResult;
 use PhpOpcua\Client\Module\ReadWrite\CallResult;
 use PhpOpcua\Client\Module\ServerInfo\BuildInfo;
@@ -1563,6 +1567,445 @@ class ManagedClient implements OpcUaClientInterface
     {
         /** @var int[] $result */
         $result = $this->invokeRemote('deleteReferences', [$referencesToDelete]);
+
+        return $result;
+    }
+
+    // ------------------------------------------------------------------
+    // HistoryUpdate (v4.4.0 — Part 11 §6.9). All 9 methods delegate via
+    // `invoke` to the daemon's HistoryModule.
+    // ------------------------------------------------------------------
+
+    /**
+     * Insert raw historical DataValues. Fails per-entry if a value already exists at the same timestamp.
+     *
+     * @param NodeId|string $nodeId
+     * @param DataValue[] $values
+     * @return int[] Per-entry status codes.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyInsertData(NodeId|string $nodeId, array $values): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyInsertData', [$nodeId, $values]);
+
+        return $result;
+    }
+
+    /**
+     * Replace existing raw historical DataValues. Fails per-entry if no value exists at the timestamp.
+     *
+     * @param NodeId|string $nodeId
+     * @param DataValue[] $values
+     * @return int[] Per-entry status codes.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyReplaceData(NodeId|string $nodeId, array $values): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyReplaceData', [$nodeId, $values]);
+
+        return $result;
+    }
+
+    /**
+     * Upsert raw historical DataValues (insert if missing, replace if present).
+     *
+     * @param NodeId|string $nodeId
+     * @param DataValue[] $values
+     * @return int[] Per-entry status codes.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyUpdateData(NodeId|string $nodeId, array $values): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyUpdateData', [$nodeId, $values]);
+
+        return $result;
+    }
+
+    /**
+     * Delete raw or modified historical data within a time range.
+     *
+     * @param NodeId|string $nodeId
+     * @param DateTimeImmutable $startTime
+     * @param DateTimeImmutable $endTime
+     * @param bool $isDeleteModified True to delete modified history; false (default) deletes raw history.
+     * @return int Overall status code for the operation.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyDeleteRawModified(
+        NodeId|string $nodeId,
+        DateTimeImmutable $startTime,
+        DateTimeImmutable $endTime,
+        bool $isDeleteModified = false,
+    ): int {
+        /** @var int $result */
+        $result = $this->invokeRemote('historyDeleteRawModified', [$nodeId, $startTime, $endTime, $isDeleteModified]);
+
+        return $result;
+    }
+
+    /**
+     * Delete historical entries at specific timestamps.
+     *
+     * @param NodeId|string $nodeId
+     * @param DateTimeImmutable[] $timestamps
+     * @return int[] Per-timestamp status codes.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyDeleteAtTime(NodeId|string $nodeId, array $timestamps): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyDeleteAtTime', [$nodeId, $timestamps]);
+
+        return $result;
+    }
+
+    /**
+     * Insert historical events.
+     *
+     * @param NodeId|string $nodeId The Event-source node (or Server object).
+     * @param string[] $selectFields BrowseName-path of each event field (e.g. ['EventId','Severity','Message']).
+     * @param array<int, Variant[]> $eventData One Variant array per event, matching $selectFields.
+     * @return int[] Per-event status codes.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyInsertEvent(NodeId|string $nodeId, array $selectFields, array $eventData): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyInsertEvent', [$nodeId, $selectFields, $eventData]);
+
+        return $result;
+    }
+
+    /**
+     * Replace historical events.
+     *
+     * @param NodeId|string $nodeId
+     * @param string[] $selectFields
+     * @param array<int, Variant[]> $eventData
+     * @return int[]
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyReplaceEvent(NodeId|string $nodeId, array $selectFields, array $eventData): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyReplaceEvent', [$nodeId, $selectFields, $eventData]);
+
+        return $result;
+    }
+
+    /**
+     * Upsert historical events.
+     *
+     * @param NodeId|string $nodeId
+     * @param string[] $selectFields
+     * @param array<int, Variant[]> $eventData
+     * @return int[]
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyUpdateEvent(NodeId|string $nodeId, array $selectFields, array $eventData): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyUpdateEvent', [$nodeId, $selectFields, $eventData]);
+
+        return $result;
+    }
+
+    /**
+     * Delete historical events by EventId.
+     *
+     * @param NodeId|string $nodeId
+     * @param string[] $eventIds ByteString event identifiers (raw bytes, base64-encoded over the wire).
+     * @return int[] Per-event status codes.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws ServiceUnsupportedException
+     * @throws DaemonException
+     */
+    public function historyDeleteEvent(NodeId|string $nodeId, array $eventIds): array
+    {
+        /** @var int[] $result */
+        $result = $this->invokeRemote('historyDeleteEvent', [$nodeId, $eventIds]);
+
+        return $result;
+    }
+
+    // ------------------------------------------------------------------
+    // File Transfer (v4.4.0 — Part 5 §C.2 / §C.3). 10 methods covering
+    // FileType and FileDirectoryType management.
+    // ------------------------------------------------------------------
+
+    /**
+     * Open a `FileType` node for reading / writing / appending.
+     *
+     * @param NodeId|string $fileNodeId
+     * @param OpenFileMode|int $mode Either an `OpenFileMode` enum value or a pre-combined byte (e.g. `OpenFileMode::toByte(OpenFileMode::Read, OpenFileMode::Append)`).
+     * @return int Server-assigned file handle.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function openFile(NodeId|string $fileNodeId, OpenFileMode|int $mode): int
+    {
+        /** @var int $result */
+        $result = $this->invokeRemote('openFile', [$fileNodeId, $mode]);
+
+        return $result;
+    }
+
+    /**
+     * Close a previously opened file handle.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function closeFile(NodeId|string $fileNodeId, int $fileHandle): void
+    {
+        $this->invokeRemote('closeFile', [$fileNodeId, $fileHandle]);
+    }
+
+    /**
+     * Read up to `$length` bytes from the current file position. Short reads are allowed at EOF.
+     *
+     * @return string The bytes read (may be shorter than `$length` at EOF).
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function readFile(NodeId|string $fileNodeId, int $fileHandle, int $length): string
+    {
+        /** @var string $result */
+        $result = $this->invokeRemote('readFile', [$fileNodeId, $fileHandle, $length]);
+
+        return $result;
+    }
+
+    /**
+     * Write `$data` at the current file position.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function writeFile(NodeId|string $fileNodeId, int $fileHandle, string $data): void
+    {
+        $this->invokeRemote('writeFile', [$fileNodeId, $fileHandle, $data]);
+    }
+
+    /**
+     * Current file position (byte offset from the start) for the supplied handle.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function getFilePosition(NodeId|string $fileNodeId, int $fileHandle): int
+    {
+        /** @var int $result */
+        $result = $this->invokeRemote('getFilePosition', [$fileNodeId, $fileHandle]);
+
+        return $result;
+    }
+
+    /**
+     * Seek to absolute byte offset `$position` (from the start).
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function setFilePosition(NodeId|string $fileNodeId, int $fileHandle, int $position): void
+    {
+        $this->invokeRemote('setFilePosition', [$fileNodeId, $fileHandle, $position]);
+    }
+
+    /**
+     * Create a sub-directory under a `FileDirectoryType` node.
+     *
+     * @return NodeId The new directory's NodeId.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function createDirectory(NodeId|string $directoryNodeId, string $directoryName): NodeId
+    {
+        /** @var NodeId $result */
+        $result = $this->invokeRemote('createDirectory', [$directoryNodeId, $directoryName]);
+
+        return $result;
+    }
+
+    /**
+     * Create a new file under a `FileDirectoryType` node. Optionally open it immediately for Write.
+     *
+     * @return CreateFileResult `(fileNodeId, fileHandle)` — `fileHandle` is `0` when `$requestFileOpen` was `false`.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function createFileInDirectory(NodeId|string $directoryNodeId, string $fileName, bool $requestFileOpen = false): CreateFileResult
+    {
+        /** @var CreateFileResult $result */
+        $result = $this->invokeRemote('createFileInDirectory', [$directoryNodeId, $fileName, $requestFileOpen]);
+
+        return $result;
+    }
+
+    /**
+     * Delete a file or sub-directory under a `FileDirectoryType` node.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function deleteFileSystemObject(NodeId|string $directoryNodeId, NodeId|string $targetNodeId): void
+    {
+        $this->invokeRemote('deleteFileSystemObject', [$directoryNodeId, $targetNodeId]);
+    }
+
+    /**
+     * Move (`$createCopy=false`, source removed) or copy (`$createCopy=true`, source preserved) a file or directory.
+     *
+     * @return NodeId The NodeId of the resulting node in the target directory.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function moveOrCopyFileSystemObject(
+        NodeId|string $directoryNodeId,
+        NodeId|string $sourceNodeId,
+        NodeId|string $targetDirectoryNodeId,
+        bool $createCopy,
+        string $newName = '',
+    ): NodeId {
+        /** @var NodeId $result */
+        $result = $this->invokeRemote('moveOrCopyFileSystemObject', [
+            $directoryNodeId, $sourceNodeId, $targetDirectoryNodeId, $createCopy, $newName,
+        ]);
+
+        return $result;
+    }
+
+    // ------------------------------------------------------------------
+    // Aggregate (v4.4.0 — Part 13). The core's `AggregateModule` exposes
+    // these via `Client::__call()` rather than `OpcUaClientInterface`, but
+    // we surface them explicitly for IDE / static analysis ergonomics.
+    // ------------------------------------------------------------------
+
+    /**
+     * Compute aggregate intervals from an already-fetched buffer of raw DataValues.
+     *
+     * @param DataValue[] $rawValues Ascending by `sourceTimestamp`.
+     * @param DateTimeImmutable $startTime
+     * @param DateTimeImmutable $endTime
+     * @param float $processingIntervalMs Bucket width in milliseconds (0 = single window).
+     * @param AggregateFunction $function
+     * @param ?AggregateOptions $options
+     * @return DataValue[] One DataValue per interval.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function aggregate(
+        array $rawValues,
+        DateTimeImmutable $startTime,
+        DateTimeImmutable $endTime,
+        float $processingIntervalMs,
+        AggregateFunction $function,
+        ?AggregateOptions $options = null,
+    ): array {
+        /** @var DataValue[] $result */
+        $result = $this->invokeRemote('aggregate', [
+            $rawValues, $startTime, $endTime, $processingIntervalMs, $function, $options,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * Fetch the raw history for the node and aggregate it server-side, then bucket client-side.
+     *
+     * @return DataValue[] One DataValue per interval.
+     *
+     * @throws BadMethodCallException
+     * @throws ConnectionException
+     * @throws ServiceException
+     * @throws DaemonException
+     */
+    public function historyAggregate(
+        NodeId|string $nodeId,
+        DateTimeImmutable $startTime,
+        DateTimeImmutable $endTime,
+        float $processingIntervalMs,
+        AggregateFunction $function,
+        ?AggregateOptions $options = null,
+    ): array {
+        /** @var DataValue[] $result */
+        $result = $this->invokeRemote('historyAggregate', [
+            $nodeId, $startTime, $endTime, $processingIntervalMs, $function, $options,
+        ]);
 
         return $result;
     }

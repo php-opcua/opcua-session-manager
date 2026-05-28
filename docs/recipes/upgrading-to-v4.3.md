@@ -7,7 +7,7 @@ see_also:
   - { href: '../reference/exceptions.md',       meta: '7 min' }
   - { href: 'https://github.com/php-opcua/opcua-client/blob/master/CHANGELOG.md', meta: 'external', label: 'opcua-client CHANGELOG' }
 
-prev: { label: 'Exceptions',                    href: '../reference/exceptions.md' }
+prev: { label: 'Upgrading to v4.4',             href: './upgrading-to-v4.4.md' }
 next: { label: 'Persistent sessions in Laravel', href: './persistent-sessions-laravel.md' }
 ---
 

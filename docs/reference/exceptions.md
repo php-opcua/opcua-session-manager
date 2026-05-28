@@ -8,7 +8,7 @@ see_also:
   - { href: 'https://github.com/php-opcua/opcua-client/blob/master/docs/reference/exceptions.md', meta: 'external', label: 'opcua-client — error handling' }
 
 prev: { label: 'IPC commands',           href: './ipc-commands.md' }
-next: { label: 'Upgrading to v4.3',      href: '../recipes/upgrading-to-v4.3.md' }
+next: { label: 'Upgrading to v4.4',      href: '../recipes/upgrading-to-v4.4.md' }
 ---
 
 # Exceptions

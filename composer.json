@@ -5,14 +5,14 @@
   "support": {
     "issues": "https://github.com/php-opcua/opcua-session-manager/issues",
     "source": "https://github.com/php-opcua/opcua-session-manager",
-    "docs": "https://github.com/php-opcua/opcua-session-manager/tree/master/doc"
+    "docs": "https://www.php-opcua.com/documentation/opcua-session-manager"
   },
   "type": "library",
   "license": "MIT",
   "authors": [
     {
       "name": "Gianfrancesco Aurecchia",
-      "email": "gianfri.aur@gmail.com"
+      "email": "gianfri@php-opcua.com"
     }
   ],
   "keywords": [
@@ -31,7 +31,7 @@
   ],
   "require": {
     "php": "^8.2",
-    "php-opcua/opcua-client": "^4.3.0",
+    "php-opcua/opcua-client": "^4.4.0",
     "react/event-loop": "^1.5",
     "react/socket": "^1.16",
     "psr/log": "^3.0",

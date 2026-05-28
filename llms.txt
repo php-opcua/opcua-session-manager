@@ -25,11 +25,12 @@ A PHP library that solves the OPC UA session persistence problem in PHP's reques
 - Type Discovery: discoverDataTypes() forwarded to daemon
 - PSR-3 Logging: optional logger on ManagedClient
 - PSR-16 Cache: invalidateCache() and flushCache() forwarded to daemon
-- Security hardening: method whitelist (37 methods), IPC auth token, credential stripping, error sanitization, connection limits
+- Security hardening: method whitelist (51 allowed operations), IPC auth token, credential stripping, error sanitization, connection limits
 - Third-party module support (v4.2.0): any method registered on the daemon's client by a custom ServiceModule is callable via ManagedClient::$method(...). Args and results travel through a JSON wire codec (PhpOpcua\Client\Wire\WireTypeRegistry) with an explicit type allowlist — no unserialize() on the wire path, zero PHP gadget-chain surface
 - Cross-platform IPC (v4.2.0): TransportInterface + AbstractStreamTransport (NDJSON framing, binary mode) + UnixSocketTransport (Linux/macOS default) + TcpLoopbackTransport (Windows default, loopback-only). TransportFactory auto-selects the right transport from an endpoint URI — unix:///path, tcp://127.0.0.1:port, or scheme-less path (= unix). Default per OS via TransportFactory::defaultEndpoint(). SocketConnection::send() delegates to TransportInterface. Daemon listener (React\Socket\SocketServer) accepts both unix:// and tcp:// URIs; construction-time loopback-only guard rejects any tcp:// bind to a non-loopback host on both client and daemon sides. ManagedClient works on Windows out of the box. WireMessageCodec handles typed envelope encoding with 16 MiB frame cap and 32-level depth cap
 - Typed SessionConfig (v4.2.0): PhpOpcua\SessionManager\Daemon\SessionConfig readonly DTO with fromArray/toArray/sanitized() — CommandHandler::handleOpen() consumes typed fields instead of $config['...'] lookups; SESSION_CONFIG::SENSITIVE_FIELDS lists password/clientKeyPath/caCertPath/userKeyPath. Wire format unchanged for backwards compatibility
 - Pluggable param deserializer (v4.2.0): ParamDeserializerInterface + ParamDeserializerRegistry + BuiltInParamDeserializer — the 200-line `match` previously embedded in CommandHandler is now a registry consulted first-match-wins. Third-party modules register their own deserializer via CommandHandler::registerParamDeserializer() without patching the command handler
+- v4.4.0 method surface (lock-step with `opcua-client` v4.4.0): 9 typed `historyInsert/Replace/Update/Delete*` methods (data and events), the `aggregate()` + `historyAggregate()` pair on `AggregateFunction` (Interpolate / Minimum / Maximum / Average / Count), and the OPC UA Part 5 `FileTransfer` surface — all reachable via `ManagedClient` over the existing `invoke` IPC command; no protocol change
 - Auto-retry and auto-batching forwarded to daemon's Client
 - Auto-publish: daemon automatically calls publish() for sessions with subscriptions, dispatching PSR-14 events (DataChangeReceived, EventNotificationReceived, AlarmActivated, etc.)
 - Auto-connect: daemon connects and registers subscriptions at startup from pre-configured connection definitions
@@ -38,14 +39,32 @@ A PHP library that solves the OPC UA session persistence problem in PHP's reques
 
 ## Architecture
 
-- ManagedClient (src/Client/ManagedClient.php): drop-in OpcUaClientInterface proxy, serializes calls to IPC
-- SocketConnection (src/Client/SocketConnection.php): Unix socket JSON transport
-- SessionManagerDaemon (src/Daemon/SessionManagerDaemon.php): ReactPHP daemon, event loop, cleanup timer, signal handlers
-- CommandHandler (src/Daemon/CommandHandler.php): IPC command dispatch, method whitelist, security enforcement, auto-connect
-- AutoPublisher (src/Daemon/AutoPublisher.php): per-session auto-publish cycle with self-rescheduling timers and ack management
-- Session (src/Daemon/Session.php): session wrapper (Client + metadata + lastUsed + publishing intervals)
-- SessionStore (src/Daemon/SessionStore.php): in-memory session registry with expiration
-- TypeSerializer (src/Serialization/TypeSerializer.php): bidirectional JSON serialization for all OPC UA types and DTOs
+- Client (src/Client/)
+  - ManagedClient (src/Client/ManagedClient.php): drop-in OpcUaClientInterface proxy, serializes calls to IPC
+  - SocketConnection (src/Client/SocketConnection.php): IPC client transport (delegates framing to Ipc\TransportInterface)
+- Daemon (src/Daemon/)
+  - SessionManagerDaemon (src/Daemon/SessionManagerDaemon.php): ReactPHP daemon, event loop, cleanup timer, signal handlers, `VERSION` constant
+  - CommandHandler (src/Daemon/CommandHandler.php): IPC command dispatch, 51-method whitelist, security enforcement, auto-connect, `registerParamDeserializer()` extension point
+  - AutoPublisher (src/Daemon/AutoPublisher.php): per-session auto-publish cycle with self-rescheduling timers and ack management
+  - Session (src/Daemon/Session.php): session wrapper (Client + metadata + lastUsed + publishing intervals)
+  - SessionStore (src/Daemon/SessionStore.php): in-memory session registry with expiration
+  - SessionConfig (src/Daemon/SessionConfig.php): readonly DTO for `open` command payload (v4.2.0); `fromArray()` / `toArray()` / `sanitized()`; `SENSITIVE_FIELDS` constant covers password / clientKeyPath / caCertPath / userKeyPath
+- Ipc (src/Ipc/, v4.2.0): cross-platform IPC primitives
+  - TransportInterface: contract for IPC transports
+  - AbstractStreamTransport: NDJSON framing on top of any stream
+  - UnixSocketTransport: Linux/macOS default (`unix:///path`)
+  - TcpLoopbackTransport: Windows default; rejects non-loopback hosts at construction
+  - TransportFactory: parses endpoint URI, returns matching transport; `defaultEndpoint()` picks per OS
+  - WireMessageCodec: typed envelope encoding/decoding (16 MiB frame cap, 32-level depth cap)
+- Serialization (src/Serialization/)
+  - TypeSerializer (src/Serialization/TypeSerializer.php): bidirectional JSON serialization for all OPC UA types and DTOs
+  - ParamDeserializerInterface + ParamDeserializerRegistry + BuiltInParamDeserializer (v4.2.0): pluggable, first-match-wins decoder for IPC params; third-party modules register their own deserializer via `CommandHandler::registerParamDeserializer()`
+- Cli (src/Cli/)
+  - ArgvParser (src/Cli/ArgvParser.php): parses `--socket`, `--timeout`, `--cleanup-interval`, `--auth-token`, `--auth-token-file`, `--max-sessions`, `--socket-mode`, `--allowed-cert-dirs`
+- Logging (src/Logging/)
+  - StreamLogger (src/Logging/StreamLogger.php): minimal PSR-3 logger over a stream resource (used by `bin/opcua-session-manager` when no logger is injected)
+- Exception (src/Exception/)
+  - DaemonException, SessionNotFoundException, SerializationException — typed errors raised from the IPC pipeline
 
 ## Installation
 
@@ -120,7 +139,7 @@ $value = $client->read('i=2259'); // ~5ms instead of ~155ms
 - PHP >= 8.2
 - ext-openssl
 - ext-pcntl (recommended)
-- php-opcua/opcua-client ^4.0
+- php-opcua/opcua-client ^4.4
 
 ## License
 
@@ -129,6 +148,6 @@ MIT
 ## Links
 
 - Repository: https://github.com/php-opcua/opcua-session-manager
-- Documentation: https://github.com/php-opcua/opcua-session-manager/tree/master/doc
+- Documentation: https://github.com/php-opcua/opcua-session-manager/tree/master/docs (or https://www.php-opcua.com/documentation/opcua-session-manager)
 - Issues: https://github.com/php-opcua/opcua-session-manager/issues
 - Packagist: https://packagist.org/packages/php-opcua/opcua-session-manager

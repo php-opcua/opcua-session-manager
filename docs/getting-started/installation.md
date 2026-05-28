@@ -54,7 +54,7 @@ Both invocations work.
 <!-- @code-block language="bash" label="terminal" -->
 ```bash
 vendor/bin/opcua-session-manager --version
-# → opcua-session-manager 4.3.1
+# → opcua-session-manager 4.4.0
 ```
 <!-- @endcode-block -->
 

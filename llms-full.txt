@@ -7,7 +7,7 @@ Repository: https://github.com/php-opcua/opcua-session-manager
 Packagist: https://packagist.org/packages/php-opcua/opcua-session-manager
 License: MIT
 PHP: >= 8.2
-Dependencies: php-opcua/opcua-client ^4.0, react/event-loop ^1.5, react/socket ^1.16, psr/log ^3.0, psr/simple-cache ^3.0
+Dependencies: php-opcua/opcua-client ^4.4, react/event-loop ^1.5, react/socket ^1.16, psr/log ^3.0, psr/simple-cache ^3.0
 
 ---
 
@@ -25,7 +25,7 @@ Components:
 - ManagedClient: drop-in OpcUaClientInterface proxy, translates method calls to IPC
 - SessionManagerDaemon: ReactPHP event loop, Unix socket server, cleanup timer, signal handlers, auto-publish, auto-connect
 - AutoPublisher: per-session auto-publish cycle with self-rescheduling timers, ack management, recovery
-- CommandHandler: IPC dispatch, method whitelist (37 methods), credential sanitization, auto-connect sessions
+- CommandHandler: IPC dispatch, method whitelist (51 methods), credential sanitization, auto-connect sessions, `registerParamDeserializer()` extension point
 - TypeSerializer: bidirectional JSON serialization for all OPC UA types and v4.0.0 DTOs
 - SessionStore: in-memory session registry with expiration
 
@@ -82,7 +82,7 @@ Auth priority: OPCUA_AUTH_TOKEN env > --auth-token-file > --auth-token
 
 - IPC authentication: timing-safe hash_equals()
 - Socket permissions: 0600 default
-- Method whitelist: 37 allowed operations, setters blocked
+- Method whitelist: 51 allowed operations (covering Read/Write/Browse/Call/Subscription/History — including v4.4.0 HistoryUpdate, Aggregate, FileTransfer surface — Discovery, NodeManagement), setters blocked
 - Credential stripping: passwords/key paths removed after connection
 - Input limit: 1MB max request
 - Connection limits: 30s timeout, 50 max concurrent
@@ -481,7 +481,7 @@ src/
 ## Links
 
 - Repository: https://github.com/php-opcua/opcua-session-manager
-- Documentation: https://github.com/php-opcua/opcua-session-manager/tree/master/doc
+- Documentation: https://github.com/php-opcua/opcua-session-manager/tree/master/docs (or https://www.php-opcua.com/documentation/opcua-session-manager)
 - Issues: https://github.com/php-opcua/opcua-session-manager/issues
 - Packagist: https://packagist.org/packages/php-opcua/opcua-session-manager
 - Changelog: https://github.com/php-opcua/opcua-session-manager/blob/master/CHANGELOG.md

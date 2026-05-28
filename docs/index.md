@@ -37,6 +37,7 @@
   - [IPC commands](./reference/ipc-commands.md)
   - [Exceptions](./reference/exceptions.md)
 - Recipes
+  - [Upgrading to v4.4](./recipes/upgrading-to-v4.4.md)
   - [Upgrading to v4.3](./recipes/upgrading-to-v4.3.md)
   - [Persistent sessions in Laravel](./recipes/persistent-sessions-laravel.md)
   - [Auto-publish pattern](./recipes/auto-publish-pattern.md)
