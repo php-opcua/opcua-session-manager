@@ -46,7 +46,7 @@ PHP's request/response model destroys all state — including network connection
 
 ### Tested against the OPC UA reference implementation
 
-The underlying [opcua-client](https://github.com/php-opcua/opcua-client) is integration-tested against **[UA-.NETStandard](https://github.com/OPCFoundation/UA-.NETStandard)** — the **reference implementation** maintained by the OPC Foundation, the organization that defines the OPC UA specification. This is the same stack used by major industrial vendors to certify their products.
+The underlying [opcua-client](https://github.com/php-opcua/opcua-client) is integration-tested against **[UA-.NETStandard](https://github.com/OPCFoundation/UA-.NETStandard)** — the **reference implementation** maintained by the OPC Foundation, the organization that defines the OPC UA specification.
 
 This session manager is additionally integration-tested via [uanetstandard-test-suite](https://github.com/php-opcua/uanetstandard-test-suite), verifying that all OPC UA operations work correctly when proxied through the daemon's IPC layer. Like [opcua-client](https://github.com/php-opcua/opcua-client), unit tests run cross-OS — **Linux, macOS, and Windows** across PHP 8.2–8.5 — on every push. Integration tests stay on Linux (Docker-hosted OPC UA servers).
 
